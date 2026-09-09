@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Global base styles. Colors/fonts below are pulled from tailwind.config.js
+  (which itself reads src/styles/theme.js) via the theme() function -
+  there are no hard-coded hex values here, so editing theme.js is the
+  only place you ever need to touch to restyle the app.
+*/
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: theme('colors.surface.base');
+    color: theme('colors.text.primary');
+    font-family: theme('fontFamily.body');
+    font-size: theme('fontSize.base');
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-family: theme('fontFamily.heading');
+    letter-spacing: -0.01em;
+  }
+
+  /* Numeric/data values use the monospace face for tabular alignment. */
+  .font-data {
+    font-family: theme('fontFamily.mono');
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background-color: theme('colors.brand.primaryMuted');
+    color: theme('colors.brand.primary');
+  }
+
+  /* Slim, low-contrast scrollbars fitting the control-room aesthetic. */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: theme('colors.border.strong');
+    border-radius: theme('borderRadius.full');
+  }
+
+  /* Visible keyboard focus ring, accessible against the dark surface. */
+  :focus-visible {
+    outline: 2px solid theme('colors.brand.accent');
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  .panel {
+    background-color: theme('colors.surface.card');
+    border: 1px solid theme('colors.border.DEFAULT');
+    border-radius: theme('borderRadius.panel');
+    box-shadow: theme('boxShadow.panel');
+  }
+
+  .kpi-card {
+    background-color: theme('colors.surface.card');
+    border: 1px solid theme('colors.border.DEFAULT');
+    border-radius: theme('borderRadius.card');
+    box-shadow: theme('boxShadow.panel');
+  }
+
+  .pill {
+    border-radius: theme('borderRadius.full');
+    font-size: theme('fontSize.xs');
+    font-weight: 600;
+    padding: 0.2rem 0.65rem;
+  }
+}
+
+/* Single orchestrated pulse used only for the "live monitoring" indicator -
+   deliberately not reused as a generic hover/entrance effect elsewhere. */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+.live-dot {
+  animation: live-pulse 1.8s ease-in-out infinite;
+}
