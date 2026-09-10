@@ -24,6 +24,20 @@
       package = pkgs.nodejs_22;
       npm.enable = true;
     };
+
+    python = {
+      enable = true;
+      #version = "3.11";
+      venv = {
+        enable = true;
+      };
+      uv = {
+        enable = true;
+        sync = {
+          enable = true;
+        };
+      };
+    };
   };
 
   # ----- Services -----
