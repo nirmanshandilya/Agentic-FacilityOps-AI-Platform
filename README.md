@@ -29,15 +29,17 @@ An autonomous AI-powered facility operations platform designed to continuously m
 
 ## 🛠️ Tech Stack
 
+*   **Environment Setup:** NixOS with `devenv` & `direnv`
 *   **Frontend:** React, Vite, Tailwind CSS, Recharts
 *   **Backend:** Node.js, Express.js
 *   **Database:** MongoDB Atlas (Mongoose)
-*   **Environment Setup:** NixOS with `devenv` & `direnv`
 
+<!--
 ## 🚀 Live Deployment
 
 *   **Frontend Application:** [View on Vercel](#) *(Replace with your Vercel URL)*
 *   **Backend API Service:** [Hosted on Render](#) *(Replace with your Render URL)*
+-->
 
 ---
 <div align="center">
