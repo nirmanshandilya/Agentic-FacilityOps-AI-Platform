@@ -30,7 +30,7 @@ export const updateAlertStatus = (alertId, status) =>
   api.patch(`/energy/alerts/${alertId}`, { status }).then((r) => r.data);
 
 export const seedFacilityData = (facilityId, days = 14) =>
-  api.post(`/energy/${facilityId}/seed`, null, { params: { days } }).then((r) => r.data);
+  api.post(`/energy/${facilityId}/seed`, undefined, { params: { days } }).then((r) => r.data);
 
 // Maintenance Agent
 export const fetchMaintenanceSummary = (facilityId) =>
@@ -58,6 +58,6 @@ export const updateWorkOrderStatus = (maintenanceId, status) =>
   api.patch(`/maintenance/work-orders/${maintenanceId}`, { status }).then((r) => r.data);
 
 export const seedMaintenanceData = (facilityId, count = 10) =>
-  api.post(`/maintenance/${facilityId}/seed`, null, { params: { count } }).then((r) => r.data);
+  api.post(`/maintenance/${facilityId}/seed`, undefined, { params: { count } }).then((r) => r.data);
 
 export default api;
