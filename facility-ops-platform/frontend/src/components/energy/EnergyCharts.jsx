@@ -14,7 +14,7 @@ import {
   BarChart,
   Bar,
 } from 'recharts';
-import { theme } from '../../styles/theme';
+import theme from '../../styles/theme';
 
 const chartColors = theme.colors.chart;
 const brand = theme.colors.brand;

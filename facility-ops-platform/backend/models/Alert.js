@@ -20,11 +20,16 @@ const AlertSchema = new Schema(
     alertType: {
       type: String,
       enum: [
+        // Energy Agent (Module 1)
         'ENERGY_ANOMALY',
         'HVAC_INEFFICIENCY',
         'WATER_ANOMALY',
         'LOW_EFFICIENCY_SCORE',
         'FORECAST_PEAK_WARNING',
+        // Maintenance Agent (Module 2)
+        'ASSET_HEALTH_CRITICAL',
+        'PREDICTED_FAILURE_RISK',
+        'MAINTENANCE_OVERDUE',
       ],
       required: true,
     },
@@ -42,7 +47,7 @@ const AlertSchema = new Schema(
       enum: ['Active', 'Acknowledged', 'Resolved'],
       default: 'Active',
     },
-    sourceAgent: { type: String, default: 'EnergyAgent' },
+    sourceAgent: { type: String, default: 'System' },
   },
   { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } }
 );

@@ -32,4 +32,32 @@ export const updateAlertStatus = (alertId, status) =>
 export const seedFacilityData = (facilityId, days = 14) =>
   api.post(`/energy/${facilityId}/seed`, null, { params: { days } }).then((r) => r.data);
 
+// Maintenance Agent
+export const fetchMaintenanceSummary = (facilityId) =>
+  api.get(`/maintenance/${facilityId}/summary`).then((r) => r.data);
+
+export const fetchAssets = (facilityId, status) =>
+  api.get(`/maintenance/${facilityId}/assets`, { params: status ? { status } : {} }).then((r) => r.data);
+
+export const fetchPredictions = (facilityId) =>
+  api.get(`/maintenance/${facilityId}/predictions`).then((r) => r.data);
+
+export const fetchMaintenanceRecommendations = (facilityId) =>
+  api.get(`/maintenance/${facilityId}/recommendations`).then((r) => r.data);
+
+export const runPredictiveCycle = (facilityId) =>
+  api.post(`/maintenance/${facilityId}/run-cycle`).then((r) => r.data);
+
+export const createWorkOrder = (facilityId, assetId) =>
+  api.post(`/maintenance/${facilityId}/assets/${assetId}/work-order`).then((r) => r.data);
+
+export const fetchWorkOrders = (facilityId, status) =>
+  api.get(`/maintenance/${facilityId}/work-orders`, { params: status ? { status } : {} }).then((r) => r.data);
+
+export const updateWorkOrderStatus = (maintenanceId, status) =>
+  api.patch(`/maintenance/work-orders/${maintenanceId}`, { status }).then((r) => r.data);
+
+export const seedMaintenanceData = (facilityId, count = 10) =>
+  api.post(`/maintenance/${facilityId}/seed`, null, { params: { count } }).then((r) => r.data);
+
 export default api;

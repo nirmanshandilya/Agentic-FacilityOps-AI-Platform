@@ -18,7 +18,7 @@ import {
   seedFacilityData,
 } from '../services/api';
 
-export default function EnergyDashboardPage() {
+export default function EnergyDashboardPage({ onNavigate }) {
   const [facilities, setFacilities] = useState([]);
   const [selectedFacilityId, setSelectedFacilityId] = useState(null);
   const [range, setRange] = useState('7d');
@@ -85,7 +85,7 @@ export default function EnergyDashboardPage() {
 
   return (
     <div className="flex min-h-screen bg-surface-base">
-      <Sidebar active="energy" />
+      <Sidebar active="energy" onNavigate={onNavigate} />
 
       <div className="flex-1 min-w-0">
         <Navbar

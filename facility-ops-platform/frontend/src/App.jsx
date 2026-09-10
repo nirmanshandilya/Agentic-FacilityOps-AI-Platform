@@ -1,12 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import EnergyDashboardPage from './pages/EnergyDashboardPage';
+import MaintenanceDashboardPage from './pages/MaintenanceDashboardPage';
 
 /**
- * Module 1 only ships the Energy Intelligence dashboard. Future modules
- * will introduce client-side routing (react-router) to switch between
- * Energy / Maintenance / Occupancy / Security / Cost pages via the
- * Sidebar nav without restructuring this component.
+ * Lightweight module switcher. Each dashboard page owns its own Sidebar +
+ * Navbar internally and receives `onNavigate` to change the active module -
+ * this avoids a routing dependency for now. When a real router is
+ * introduced (Occupancy/Security/Cost modules will make that worthwhile),
+ * `activeModule` becomes the route param and this switch becomes route
+ * definitions instead.
  */
+const MODULES = {
+  energy: EnergyDashboardPage,
+  maintenance: MaintenanceDashboardPage,
+};
+
 export default function App() {
-  return <EnergyDashboardPage />;
+  const [activeModule, setActiveModule] = useState('energy');
+
+  const ActivePage = MODULES[activeModule] || EnergyDashboardPage;
+
+  return <ActivePage onNavigate={setActiveModule} />;
 }

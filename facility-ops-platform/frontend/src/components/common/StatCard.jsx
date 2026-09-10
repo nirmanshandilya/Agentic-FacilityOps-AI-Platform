@@ -5,6 +5,7 @@ const ACCENT_CLASSES = {
   teal: { icon: 'text-brand-secondary', ring: 'bg-brand-secondaryMuted' },
   indigo: { icon: 'text-brand-accent', ring: 'bg-brand-accentMuted' },
   success: { icon: 'text-status-success', ring: 'bg-status-successMuted' },
+  critical: { icon: 'text-status-critical', ring: 'bg-status-criticalMuted' },
 };
 
 /**

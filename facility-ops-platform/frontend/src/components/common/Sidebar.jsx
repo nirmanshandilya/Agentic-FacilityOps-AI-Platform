@@ -2,20 +2,20 @@ import React from 'react';
 import { Zap, Wrench, Users, ShieldCheck, DollarSign, LayoutGrid } from 'lucide-react';
 
 /**
- * Thin icon-rail sidebar. Module 1 only wires up the Energy Agent, so the
- * remaining agent slots (Maintenance, Occupancy, Security, Cost) render as
- * disabled placeholders - this keeps the nav structure stable for later
- * modules instead of requiring a rebuild when they land.
+ * Thin icon-rail sidebar. Modules 1 & 2 wire up Energy and Maintenance;
+ * the remaining agent slots (Occupancy, Security, Cost) still render as
+ * disabled placeholders - this keeps the nav structure stable so later
+ * modules just flip `enabled: true` instead of requiring a rebuild.
  */
 const NAV_ITEMS = [
   { key: 'energy', label: 'Energy', icon: Zap, enabled: true },
-  { key: 'maintenance', label: 'Maintenance', icon: Wrench, enabled: false },
+  { key: 'maintenance', label: 'Maintenance', icon: Wrench, enabled: true },
   { key: 'occupancy', label: 'Occupancy', icon: Users, enabled: false },
   { key: 'security', label: 'Security', icon: ShieldCheck, enabled: false },
   { key: 'cost', label: 'Cost', icon: DollarSign, enabled: false },
 ];
 
-export default function Sidebar({ active = 'energy' }) {
+export default function Sidebar({ active = 'energy', onNavigate = () => {} }) {
   return (
     <aside className="w-[76px] shrink-0 h-screen sticky top-0 border-r border-border bg-surface-card flex flex-col items-center py-5 gap-6">
       <div className="h-9 w-9 rounded-md bg-brand-primaryMuted flex items-center justify-center text-brand-primary">
@@ -30,6 +30,7 @@ export default function Sidebar({ active = 'energy' }) {
               key={key}
               type="button"
               disabled={!enabled}
+              onClick={() => enabled && onNavigate(key)}
               title={enabled ? label : `${label} — coming in a later module`}
               className={[
                 'group flex flex-col items-center gap-1 rounded-md py-2.5 transition-colors',

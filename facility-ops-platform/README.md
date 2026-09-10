@@ -1,8 +1,12 @@
-# Agentic FacilityOps AI Platform — Module 1: Foundation & Energy Intelligence Agent
+# Agentic FacilityOps AI Platform — Modules 1 & 2
 
-MERN-stack foundation for the Agentic FacilityOps AI Platform, covering Milestone 1
-(Weeks 1–2) of the project brief: utility/IoT data integration, the autonomous
-Energy Agent, and the Energy Intelligence dashboard.
+MERN-stack build of the Agentic FacilityOps AI Platform, now covering:
+
+- **Module 1 — Foundation & Energy Intelligence** (Milestone 1): utility/IoT
+  data integration, the autonomous Energy Agent, and the Energy dashboard.
+- **Module 2 — Predictive Maintenance System** (Milestone 2): asset health
+  scoring, failure prediction, auto-generated work orders, and the
+  Predictive Maintenance dashboard.
 
 ## Stack
 
@@ -15,26 +19,30 @@ Energy Agent, and the Energy Intelligence dashboard.
 facility-ops-platform/
 ├── backend/
 │   ├── config/        # DB connection + centralized env config
-│   ├── models/        # Facility, EnergyUsage, Alert schemas
-│   ├── controllers/    # facilityController, energyController
-│   ├── routes/         # facilityRoutes, energyRoutes
-│   ├── agents/          # EnergyAgent.js (autonomous logic)
-│   ├── seed/            # mock IoT/utility data generator
+│   ├── models/        # Facility, EnergyUsage, Alert, Asset, MaintenanceRecord
+│   ├── controllers/    # facilityController, energyController, maintenanceController
+│   ├── routes/         # facilityRoutes, energyRoutes, maintenanceRoutes
+│   ├── agents/          # EnergyAgent.js, MaintenanceAgent.js
+│   ├── seed/            # mock IoT/utility + asset/maintenance data generator
 │   └── server.js
 └── frontend/
     └── src/
-        ├── styles/               # theme.js (single source of truth) + index.css
-        ├── components/common/    # Navbar, Sidebar, StatCard, MetricBadge
-        ├── components/energy/    # EnergyCharts, HeatmapView, HVACPerformance, AIRecommendationsCard
-        ├── pages/                # EnergyDashboardPage.jsx
-        └── services/             # api.js
+        ├── styles/                  # theme.js (single source of truth) + index.css
+        ├── components/common/       # Navbar, Sidebar, StatCard, MetricBadge
+        ├── components/energy/       # EnergyCharts, HeatmapView, HVACPerformance, AIRecommendationsCard
+        ├── components/maintenance/  # HealthDistributionPanel, FailureRiskTable, AgentActionsPanel
+        ├── pages/                   # EnergyDashboardPage.jsx, MaintenanceDashboardPage.jsx
+        └── services/                # api.js
 ```
 
 The structure is deliberately flat and domain-separated so future agents
-(Maintenance, Occupancy, Security, Cost) can each add their own
-`models/`, `controllers/`, `routes/`, and `agents/*Agent.js` file, plus a
-`components/<domain>/` folder and `pages/<Domain>DashboardPage.jsx`, without
-touching Energy's code. The Sidebar nav already reserves slots for them.
+(Occupancy, Security, Cost) can each add their own `models/`, `controllers/`,
+`routes/`, and `agents/*Agent.js` file, plus a `components/<domain>/` folder
+and `pages/<Domain>DashboardPage.jsx`, following the same pattern Energy and
+Maintenance already use. `App.jsx` holds an `activeModule` switch and the
+Sidebar's `onNavigate` callback drives it — enabling a new module is a
+one-line flip in `Sidebar.jsx` (`enabled: true`) plus a new `MODULES` entry
+in `App.jsx`.
 
 ## Getting started
 
@@ -44,7 +52,9 @@ touching Energy's code. The Sidebar nav already reserves slots for them.
 cd backend
 npm install
 cp .env.example .env      # edit MONGO_URI if not running Mongo locally
-npm run seed               # creates 3 demo facilities + 14 days of history
+npm run seed               # creates 3 demo facilities, 14 days of energy history,
+                             # a 10-asset roster per facility, and runs an initial
+                             # predictive maintenance cycle
 npm run dev                 # starts the API on http://localhost:5000
 ```
 
@@ -62,8 +72,12 @@ npm run dev                 # starts Vite on http://localhost:5173
 The Vite dev server proxies `/api/*` requests to `http://localhost:5000`
 (see `vite.config.js`), so no CORS configuration is needed in development.
 
-### 3. Using the dashboard
+### 3. Using the dashboards
 
+Use the icon rail on the left to switch between modules — both share the
+same facility list.
+
+**Energy Intelligence**
 - Pick a facility from the selector in the header.
 - Use **Seed Realistic IoT Data** to (re-)populate 14 days of hourly readings,
   including injected anomaly spikes, for the selected facility.
@@ -71,6 +85,19 @@ The Vite dev server proxies `/api/*` requests to `http://localhost:5000`
   and charts.
 - Recommendations and the HVAC status panel are generated live by the
   Energy Agent based on the facility's current data.
+
+**Predictive Maintenance**
+- Use **Seed Asset Roster** to generate a 10-asset roster (HVAC units,
+  generator, elevators, etc.) with a realistic age spread, plus some
+  historical completed work orders, then immediately run one predictive
+  cycle so the dashboard isn't empty.
+- **Run Predictive Scan** re-evaluates every asset's health score and
+  refreshes the failure risk table and Agent Actions panel without creating
+  any new tickets.
+- **Generate Work Order** on an Agent Actions card creates a real
+  `MaintenanceRecord` (and, for High/Critical risk, an `Alert`) for that
+  specific asset immediately, bypassing the agent's automatic risk-window
+  filter.
 
 ## Restyling the entire platform
 
@@ -125,6 +152,20 @@ If you introduce a new font family, also update the Google Fonts `<link>` in
 
 `range` accepts `24h`, `7d` (default), or `30d`.
 
+## API reference (Module 2)
+
+| Method | Endpoint                                                    | Description                                             |
+|--------|--------------------------------------------------------------|-----------------------------------------------------------|
+| GET    | `/api/maintenance/:facilityId/summary`                      | KPI summary (assets monitored, tickets, predicted failures, downtime reduction) |
+| GET    | `/api/maintenance/:facilityId/assets?status=`               | List assets (optionally filtered by status)               |
+| GET    | `/api/maintenance/:facilityId/predictions`                  | Re-evaluate health, return failure risk predictions        |
+| GET    | `/api/maintenance/:facilityId/recommendations`              | Agent-generated maintenance recommendations                |
+| POST   | `/api/maintenance/:facilityId/run-cycle`                    | Full cycle: evaluate → predict → auto-generate work orders |
+| POST   | `/api/maintenance/:facilityId/assets/:assetId/work-order`   | Manually generate a work order for one asset               |
+| GET    | `/api/maintenance/:facilityId/work-orders?status=`          | List maintenance tickets                                    |
+| PATCH  | `/api/maintenance/work-orders/:maintenanceId`               | Update a ticket's status                                    |
+| POST   | `/api/maintenance/:facilityId/seed?count=`                  | Seed a realistic asset roster + run an initial cycle        |
+
 ## EnergyAgent logic summary
 
 `backend/agents/EnergyAgent.js` implements:
@@ -141,8 +182,41 @@ If you introduce a new font family, also update the Google Fonts `<link>` in
   load distribution, anomalies, and forecast trend into actionable,
   prioritized suggestions.
 
-## Evaluation criteria checklist (Milestone 1 / Week 2)
+## MaintenanceAgent logic summary
 
+`backend/agents/MaintenanceAgent.js` implements:
+
+- **`evaluateAssetHealth`** — combines install-age decay, a deterministic
+  per-asset "operating stress" factor (stable hash of `assetId`, standing in
+  for real telemetry until a sensor feed exists), and a maintenance-history
+  adjustment (credit for recent completed service, penalty for overdue open
+  tickets) into a 0–100 score, and derives `status` from the same
+  Warning/Critical thresholds used everywhere else in the module.
+- **`predictFailures`** — filters assets below the risk threshold and
+  projects a failure date from the health score and a stress-adjusted decay
+  rate; returns predictions sorted soonest-first.
+- **`generateWorkOrders`** — auto-creates a `Pending` `MaintenanceRecord`
+  (+ an `Alert` for High/Critical risk) for predictions inside the
+  configured lead-time window, skipping assets that already have an open
+  ticket.
+- **`createWorkOrderForAsset`** — the manual counterpart used by the
+  dashboard's "Generate Work Order" button: creates a ticket for one asset
+  immediately regardless of the window filter, still idempotent against
+  existing open tickets.
+- **`generateMaintenanceRecommendations`** — turns predictions into
+  human-readable, prioritized recommendation cards for the Agent Actions
+  panel.
+- **`runPredictiveCycle`** — orchestrates all of the above for a facility in
+  one call; used by the "Run Predictive Scan" button and the seed flow.
+
+## Evaluation criteria checklist
+
+**Milestone 1 (Week 2)**
 - [x] Utility/IoT data integrated via the seed generator and `EnergyUsage` model
 - [x] Energy dashboard operational (KPIs, trend chart, distribution, water usage, heatmap, HVAC status, recommendations)
 - [x] Energy anomaly detection targets ≥85% accuracy (z ≥ 2.0σ threshold, tunable via `.env`)
+
+**Milestone 2 (Week 4)**
+- [x] Asset monitoring operational (`Asset` model + seeded roster + health distribution panel)
+- [x] Maintenance predictions generated successfully (`predictFailures`, surfaced in the risk table)
+- [x] Equipment health scoring functional (`evaluateAssetHealth`, recomputed on every scan/cycle)

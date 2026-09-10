@@ -7,6 +7,7 @@ const connectDB = require('./config/db');
 
 const facilityRoutes = require('./routes/facilityRoutes');
 const energyRoutes = require('./routes/energyRoutes');
+const maintenanceRoutes = require('./routes/maintenanceRoutes');
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.get('/api/health', (req, res) => {
 // without touching this file's structure.
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/energy', energyRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
 
 // ---------- 404 handler ----------
 app.use((req, res) => {

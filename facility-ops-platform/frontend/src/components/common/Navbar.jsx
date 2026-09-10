@@ -7,13 +7,22 @@ const RANGE_OPTIONS = [
   { key: '30d', label: '30D' },
 ];
 
-export default function Navbar({ facilities, selectedFacilityId, onFacilityChange, range, onRangeChange, isLive }) {
+export default function Navbar({
+  facilities,
+  selectedFacilityId,
+  onFacilityChange,
+  range,
+  onRangeChange,
+  isLive,
+  title = 'Energy Intelligence',
+  showRangeFilter = true,
+}) {
   const selected = facilities.find((f) => f.facilityId === selectedFacilityId);
 
   return (
     <header className="border-b border-border bg-surface-card px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
       <div>
-        <h1 className="text-lg font-heading font-semibold text-text-primary leading-tight">Energy Intelligence</h1>
+        <h1 className="text-lg font-heading font-semibold text-text-primary leading-tight">{title}</h1>
         <p className="text-xs text-text-muted mt-0.5">Agentic FacilityOps AI Platform</p>
       </div>
 
@@ -34,22 +43,24 @@ export default function Navbar({ facilities, selectedFacilityId, onFacilityChang
           <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
         </div>
 
-        {/* Date range filter */}
-        <div className="flex items-center bg-surface-elevated border border-border rounded-md p-0.5">
-          {RANGE_OPTIONS.map((opt) => (
-            <button
-              key={opt.key}
-              type="button"
-              onClick={() => onRangeChange(opt.key)}
-              className={[
-                'px-3 py-1.5 text-xs rounded-[6px] transition-colors font-data',
-                range === opt.key ? 'bg-brand-primaryMuted text-brand-primary' : 'text-text-secondary hover:text-text-primary',
-              ].join(' ')}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        {/* Date range filter - hidden on pages with no time-range-scoped data (e.g. Maintenance) */}
+        {showRangeFilter && (
+          <div className="flex items-center bg-surface-elevated border border-border rounded-md p-0.5">
+            {RANGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => onRangeChange(opt.key)}
+                className={[
+                  'px-3 py-1.5 text-xs rounded-[6px] transition-colors font-data',
+                  range === opt.key ? 'bg-brand-primaryMuted text-brand-primary' : 'text-text-secondary hover:text-text-primary',
+                ].join(' ')}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Live monitoring indicator */}
         <div className="flex items-center gap-2 text-xs text-status-success bg-status-successMuted rounded-full px-3 py-1.5">
