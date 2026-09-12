@@ -34,6 +34,18 @@ const env = {
       // whose countdown falls within this many days
       workOrderWindowDays: parseInt(process.env.MAINT_WORK_ORDER_WINDOW_DAYS, 10) || 21,
     },
+    occupancy: {
+      // a zone at/above this % of maxCapacity triggers an overcrowding Alert
+      overcrowdingThresholdPct: parseFloat(process.env.OCC_OVERCROWDING_THRESHOLD_PCT) || 90,
+      // target utilization for Workspace-type zones - Workspace Efficiency
+      // decays the further a zone's actual utilization is from this value,
+      // in either direction (empty desks and overcrowded floors are both bad)
+      idealUtilizationPct: parseFloat(process.env.OCC_IDEAL_UTILIZATION_PCT) || 75,
+      // Workspace zones below this % are flagged as underused, not just "fine"
+      underutilizedThresholdPct: parseFloat(process.env.OCC_UNDERUTILIZED_THRESHOLD_PCT) || 30,
+      // how many days of OccupancyLog history feed the utilization heatmap
+      baselineWindowDays: parseInt(process.env.OCC_BASELINE_WINDOW_DAYS, 10) || 14,
+    },
   },
 };
 

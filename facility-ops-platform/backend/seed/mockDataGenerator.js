@@ -31,13 +31,17 @@ const ASSET_CATALOG = [
  *
  * @param {string} facilityId
  * @param {number} count number of assets to generate
+ * @param {number} offset starting catalog index - pass the facility's
+ *   current asset count when appending, so names don't collide with an
+ *   existing roster (e.g. "HVAC Unit A" vs "HVAC Unit A (2)")
  * @returns {Array} Asset-shaped documents (without _id)
  */
-function generateAssetsForFacility(facilityId, count = 10) {
+function generateAssetsForFacility(facilityId, count = 10, offset = 0) {
   const assets = [];
   const now = Date.now();
 
-  for (let i = 0; i < count; i += 1) {
+  for (let n = 0; n < count; n += 1) {
+    const i = offset + n;
     const template = ASSET_CATALOG[i % ASSET_CATALOG.length];
     const cycleNumber = Math.floor(i / ASSET_CATALOG.length);
     const assetName = cycleNumber > 0 ? `${template.name} (${cycleNumber + 1})` : template.name;
@@ -100,6 +104,89 @@ async function generateMaintenanceHistory(assets) {
 
   if (!records.length) return [];
   return MaintenanceRecord.insertMany(records);
+}
+
+// ---------------------------------------------------------------------
+// Module 3: Occupancy Agent - zone + occupancy log seeding
+// ---------------------------------------------------------------------
+
+// Matches the wireframe's Zone Occupancy Distribution exactly. Each zone
+// gets a target utilization used to shape its seeded history - Office
+// Floors and Meeting Rooms run hotter during business hours than Common
+// Areas and Parking.
+const ZONE_CATALOG = [
+  { name: 'Office Floors', zoneType: 'Workspace', maxCapacity: 220, targetUtilizationPct: 80 },
+  { name: 'Meeting Rooms', zoneType: 'Meeting Room', maxCapacity: 60, targetUtilizationPct: 62 },
+  { name: 'Common Areas', zoneType: 'Common Area', maxCapacity: 150, targetUtilizationPct: 45 },
+  { name: 'Parking Areas', zoneType: 'Parking', maxCapacity: 300, targetUtilizationPct: 35 },
+];
+
+/**
+ * Generates the 4 canonical zones for a facility. `currentOccupancy`
+ * starts at 0 - OccupancyAgent.refreshCurrentOccupancy() sets it from
+ * the most recent seeded OccupancyLog right after insertion.
+ *
+ * @param {string} facilityId
+ * @returns {Array} Zone-shaped documents (without _id)
+ */
+function generateZonesForFacility(facilityId) {
+  return ZONE_CATALOG.map((z) => ({
+    zoneId: uuidv4(),
+    facilityId,
+    name: z.name,
+    zoneType: z.zoneType,
+    maxCapacity: z.maxCapacity,
+    currentOccupancy: 0,
+  }));
+}
+
+/**
+ * Generates hourly OccupancyLog history for a set of already-inserted
+ * zones, using the same daily occupancy curve shape as the Energy
+ * generator (_occupancyCurve) scaled to each zone's target utilization,
+ * plus a small chance of an overcrowding spike so the overcrowding
+ * detector has something real to catch on a fresh seed.
+ *
+ * @param {Array} zones inserted Zone documents (need zoneId, facilityId, maxCapacity)
+ * @param {number} days hours of history = days * 24
+ * @returns {Array} OccupancyLog-shaped documents (without _id)
+ */
+function generateOccupancyLogsForZones(zones, days = 14) {
+  const logs = [];
+  const now = new Date();
+  const totalHours = days * 24;
+
+  zones.forEach((zone) => {
+    const catalogEntry = ZONE_CATALOG.find((z) => z.name === zone.name);
+    const targetUtilizationPct = catalogEntry ? catalogEntry.targetUtilizationPct : 50;
+    const spikeChance = 0.02; // ~2% of hourly readings spike toward/over capacity
+
+    for (let i = 0; i < totalHours; i += 1) {
+      const timestamp = new Date(now.getTime() - (totalHours - i) * 60 * 60 * 1000);
+      const hour = timestamp.getHours();
+      const dayOfWeek = timestamp.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+      const occupancyFactor = _occupancyCurve(hour) * (isWeekend ? 0.3 : 1);
+      let utilizationPct = targetUtilizationPct * occupancyFactor * (1 + (Math.random() - 0.5) * 0.3);
+
+      if (Math.random() < spikeChance) {
+        utilizationPct = 90 + Math.random() * 20; // 90-110% of capacity
+      }
+
+      const recordedOccupancy = Math.max(0, Math.round((utilizationPct / 100) * zone.maxCapacity));
+
+      logs.push({
+        logId: uuidv4(),
+        zoneId: zone.zoneId,
+        facilityId: zone.facilityId,
+        timestamp,
+        recordedOccupancy,
+      });
+    }
+  });
+
+  return logs;
 }
 
 /**
@@ -203,10 +290,14 @@ async function runStandaloneSeed() {
   const Facility = require('../models/Facility');
   const EnergyUsage = require('../models/EnergyUsage');
   const Asset = require('../models/Asset');
+  const Zone = require('../models/Zone');
+  const OccupancyLog = require('../models/OccupancyLog');
   const MaintenanceAgent = require('../agents/MaintenanceAgent');
+  const OccupancyAgent = require('../agents/OccupancyAgent');
 
   await connectDB();
   const maintenanceAgent = new MaintenanceAgent();
+  const occupancyAgent = new OccupancyAgent();
 
   const demoFacilities = [
     { facilityName: 'Riverside Tech Campus', facilityType: 'IT Park', location: 'Austin, TX' },
@@ -221,30 +312,43 @@ async function runStandaloneSeed() {
       console.log(`[seed] Created facility: ${facility.facilityName} (${facility.facilityId})`);
     }
 
-    const existingCount = await EnergyUsage.countDocuments({ facilityId: facility.facilityId });
-    if (existingCount > 0) {
-      console.log(`[seed] Skipping ${facility.facilityName}, already has ${existingCount} readings`);
-      continue;
+    const existingEnergyCount = await EnergyUsage.countDocuments({ facilityId: facility.facilityId });
+    if (existingEnergyCount > 0) {
+      console.log(`[seed] Skipping energy readings for ${facility.facilityName}, already has ${existingEnergyCount}`);
+    } else {
+      const readings = generateReadingsForFacility(facility.facilityId, 14);
+      await EnergyUsage.insertMany(readings);
+      console.log(`[seed] Inserted ${readings.length} readings for ${facility.facilityName}`);
     }
-
-    const readings = generateReadingsForFacility(facility.facilityId, 14);
-    await EnergyUsage.insertMany(readings);
-    console.log(`[seed] Inserted ${readings.length} readings for ${facility.facilityName}`);
 
     const existingAssetCount = await Asset.countDocuments({ facilityId: facility.facilityId });
     if (existingAssetCount > 0) {
       console.log(`[seed] Skipping assets for ${facility.facilityName}, already has ${existingAssetCount}`);
-      continue;
+    } else {
+      const assetDefs = generateAssetsForFacility(facility.facilityId, 10);
+      const assets = await Asset.insertMany(assetDefs);
+      await generateMaintenanceHistory(assets);
+
+      const cycle = await maintenanceAgent.runPredictiveCycle(facility.facilityId);
+      console.log(
+        `[seed] Seeded ${assets.length} assets for ${facility.facilityName}; predictive cycle flagged ${cycle.predictions.length} at-risk asset(s), created ${cycle.workOrdersCreated} work order(s).`
+      );
     }
 
-    const assetDefs = generateAssetsForFacility(facility.facilityId, 10);
-    const assets = await Asset.insertMany(assetDefs);
-    await generateMaintenanceHistory(assets);
+    const existingZoneCount = await Zone.countDocuments({ facilityId: facility.facilityId });
+    if (existingZoneCount > 0) {
+      console.log(`[seed] Skipping zones for ${facility.facilityName}, already has ${existingZoneCount}`);
+    } else {
+      const zoneDefs = generateZonesForFacility(facility.facilityId);
+      const zones = await Zone.insertMany(zoneDefs);
+      const logs = generateOccupancyLogsForZones(zones, 14);
+      await OccupancyLog.insertMany(logs);
 
-    const cycle = await maintenanceAgent.runPredictiveCycle(facility.facilityId);
-    console.log(
-      `[seed] Seeded ${assets.length} assets for ${facility.facilityName}; predictive cycle flagged ${cycle.predictions.length} at-risk asset(s), created ${cycle.workOrdersCreated} work order(s).`
-    );
+      const occCycle = await occupancyAgent.runOccupancyCycle(facility.facilityId);
+      console.log(
+        `[seed] Seeded ${zones.length} zones + ${logs.length} occupancy logs for ${facility.facilityName}; ${occCycle.overcrowded.length} zone(s) currently overcrowded.`
+      );
+    }
   }
 
   console.log('[seed] Done.');
@@ -256,6 +360,8 @@ module.exports = {
   generateReadingsForFacility,
   generateAssetsForFacility,
   generateMaintenanceHistory,
+  generateZonesForFacility,
+  generateOccupancyLogsForZones,
   runStandaloneSeed,
 };
 

@@ -177,16 +177,17 @@ async function seedFacilityAssets(req, res) {
   try {
     const { facilityId } = req.params;
     const count = parseInt(req.query.count, 10) || 10;
+    const append = req.query.append === 'true';
 
-    const existing = await Asset.countDocuments({ facilityId });
-    if (existing > 0) {
+    const existingCount = await Asset.countDocuments({ facilityId });
+    if (existingCount > 0 && !append) {
       return res.status(409).json({
         success: false,
-        message: `Facility already has ${existing} assets. Delete them first to reseed.`,
+        message: `Facility already has ${existingCount} assets. Pass ?append=true to add more, or delete the existing roster first.`,
       });
     }
 
-    const assetDefs = generateAssetsForFacility(facilityId, count);
+    const assetDefs = generateAssetsForFacility(facilityId, count, existingCount);
     const assets = await Asset.insertMany(assetDefs);
 
     await generateMaintenanceHistory(assets);
@@ -195,7 +196,7 @@ async function seedFacilityAssets(req, res) {
 
     res.status(201).json({
       success: true,
-      message: `Seeded ${assets.length} assets for facility ${facilityId}`,
+      message: `${append ? 'Added' : 'Seeded'} ${assets.length} asset(s) for facility ${facilityId}`,
       count: assets.length,
       cycleResult,
     });

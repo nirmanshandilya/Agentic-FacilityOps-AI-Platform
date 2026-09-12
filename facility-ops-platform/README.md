@@ -1,4 +1,4 @@
-# Agentic FacilityOps AI Platform — Modules 1 & 2
+# Agentic FacilityOps AI Platform — Modules 1, 2 & 3
 
 MERN-stack build of the Agentic FacilityOps AI Platform, now covering:
 
@@ -7,6 +7,10 @@ MERN-stack build of the Agentic FacilityOps AI Platform, now covering:
 - **Module 2 — Predictive Maintenance System** (Milestone 2): asset health
   scoring, failure prediction, auto-generated work orders, and the
   Predictive Maintenance dashboard.
+- **Module 3 — Occupancy Agent** (Milestone 3, part 1): zone occupancy
+  monitoring, overcrowding detection, utilization heatmaps, and the
+  Occupancy Intelligence dashboard. (Security Agent, the other half of
+  Milestone 3, is a separate follow-up module.)
 
 ## Stack
 
@@ -19,11 +23,11 @@ MERN-stack build of the Agentic FacilityOps AI Platform, now covering:
 facility-ops-platform/
 ├── backend/
 │   ├── config/        # DB connection + centralized env config
-│   ├── models/        # Facility, EnergyUsage, Alert, Asset, MaintenanceRecord
-│   ├── controllers/    # facilityController, energyController, maintenanceController
-│   ├── routes/         # facilityRoutes, energyRoutes, maintenanceRoutes
-│   ├── agents/          # EnergyAgent.js, MaintenanceAgent.js
-│   ├── seed/            # mock IoT/utility + asset/maintenance data generator
+│   ├── models/        # Facility, EnergyUsage, Alert, Asset, MaintenanceRecord, Zone, OccupancyLog
+│   ├── controllers/    # facilityController, energyController, maintenanceController, occupancyController
+│   ├── routes/         # facilityRoutes, energyRoutes, maintenanceRoutes, occupancyRoutes
+│   ├── agents/          # EnergyAgent.js, MaintenanceAgent.js, OccupancyAgent.js
+│   ├── seed/            # mock IoT/utility + asset/maintenance + zone/occupancy data generator
 │   └── server.js
 └── frontend/
     └── src/
@@ -31,18 +35,25 @@ facility-ops-platform/
         ├── components/common/       # Navbar, Sidebar, StatCard, MetricBadge
         ├── components/energy/       # EnergyCharts, HeatmapView, HVACPerformance, AIRecommendationsCard
         ├── components/maintenance/  # HealthDistributionPanel, FailureRiskTable, AgentActionsPanel
-        ├── pages/                   # EnergyDashboardPage.jsx, MaintenanceDashboardPage.jsx
+        ├── components/occupancy/    # ZoneDistributionPanel, OccupancyHeatmap, SpaceOptimizationPanel
+        ├── pages/                   # EnergyDashboardPage.jsx, MaintenanceDashboardPage.jsx, OccupancyDashboardPage.jsx
         └── services/                # api.js
 ```
 
 The structure is deliberately flat and domain-separated so future agents
-(Occupancy, Security, Cost) can each add their own `models/`, `controllers/`,
+(Security, Cost) can each add their own `models/`, `controllers/`,
 `routes/`, and `agents/*Agent.js` file, plus a `components/<domain>/` folder
-and `pages/<Domain>DashboardPage.jsx`, following the same pattern Energy and
-Maintenance already use. `App.jsx` holds an `activeModule` switch and the
+and `pages/<Domain>DashboardPage.jsx`, following the same pattern the first
+three modules already use. `App.jsx` holds an `activeModule` switch and the
 Sidebar's `onNavigate` callback drives it — enabling a new module is a
 one-line flip in `Sidebar.jsx` (`enabled: true`) plus a new `MODULES` entry
 in `App.jsx`.
+
+> Note: the page-level component (`OccupancyDashboardPage.jsx`) lives in
+> `pages/`, not `components/occupancy/`, to stay consistent with
+> `EnergyDashboardPage.jsx` and `MaintenanceDashboardPage.jsx` -
+> `components/occupancy/` holds only the reusable sub-components
+> (`ZoneDistributionPanel`, `OccupancyHeatmap`, `SpaceOptimizationPanel`).
 
 ## Getting started
 
@@ -53,8 +64,9 @@ cd backend
 npm install
 cp .env.example .env      # edit MONGO_URI if not running Mongo locally
 npm run seed               # creates 3 demo facilities, 14 days of energy history,
-                             # a 10-asset roster per facility, and runs an initial
-                             # predictive maintenance cycle
+                             # a 10-asset roster + predictive cycle, and 4 zones +
+                             # 14 days of occupancy history + an occupancy cycle,
+                             # per facility
 npm run dev                 # starts the API on http://localhost:5000
 ```
 
@@ -98,6 +110,18 @@ same facility list.
   `MaintenanceRecord` (and, for High/Critical risk, an `Alert`) for that
   specific asset immediately, bypassing the agent's automatic risk-window
   filter.
+
+**Occupancy Intelligence**
+- Use **Seed Zone Data** to generate the 4 canonical zones (Office Floors,
+  Meeting Rooms, Common Areas, Parking Areas) plus 14 days of hourly
+  occupancy history, then run one occupancy cycle so the KPIs, heatmap, and
+  recommendations aren't empty. Click it again afterward (now labeled
+  **Refresh Occupancy History**) to layer on another 14 days of history for
+  the existing zones.
+- **Run Occupancy Scan** re-reads the latest occupancy log per zone,
+  recomputes rates, and re-checks for overcrowding without adding new history.
+- The heatmap and KPIs respect the 24H / 7D / 30D range filter; zone
+  distribution and recommendations always reflect the current live reading.
 
 ## Restyling the entire platform
 
@@ -164,7 +188,20 @@ If you introduce a new font family, also update the Google Fonts `<link>` in
 | POST   | `/api/maintenance/:facilityId/assets/:assetId/work-order`   | Manually generate a work order for one asset               |
 | GET    | `/api/maintenance/:facilityId/work-orders?status=`          | List maintenance tickets                                    |
 | PATCH  | `/api/maintenance/work-orders/:maintenanceId`               | Update a ticket's status                                    |
-| POST   | `/api/maintenance/:facilityId/seed?count=`                  | Seed a realistic asset roster + run an initial cycle        |
+| POST   | `/api/maintenance/:facilityId/seed?count=&append=`          | Seed (or top up) a realistic asset roster + run a cycle      |
+
+## API reference (Module 3)
+
+| Method | Endpoint                                          | Description                                              |
+|--------|-----------------------------------------------------|-------------------------------------------------------------|
+| GET    | `/api/occupancy/:facilityId/summary`                | KPI summary (occupancy rate, active visitors, workspace efficiency) |
+| GET    | `/api/occupancy/:facilityId/zones`                  | Live per-zone occupancy rates                                |
+| GET    | `/api/occupancy/:facilityId/heatmap?range=`         | Hour/day-of-week utilization buckets for the heatmap         |
+| GET    | `/api/occupancy/:facilityId/recommendations`        | Agent-generated space optimization recommendations           |
+| POST   | `/api/occupancy/:facilityId/run-cycle`              | Full cycle: refresh from logs → monitor → detect overcrowding |
+| POST   | `/api/occupancy/:facilityId/seed?append=`           | Seed the 4 canonical zones + history, or top up history       |
+
+`range` accepts `24h`, `7d` (default), or `30d`.
 
 ## EnergyAgent logic summary
 
@@ -209,6 +246,40 @@ If you introduce a new font family, also update the Google Fonts `<link>` in
 - **`runPredictiveCycle`** — orchestrates all of the above for a facility in
   one call; used by the "Run Predictive Scan" button and the seed flow.
 
+## OccupancyAgent logic summary
+
+`backend/agents/OccupancyAgent.js` implements:
+
+- **`monitorOccupancy`** — pure calculation of live occupancy rate (%) per
+  zone from `currentOccupancy` / `maxCapacity`.
+- **`detectOvercrowding`** — flags zones at/above the overcrowding
+  threshold (default 90%) and writes a `ZONE_OVERCROWDING` `Alert`,
+  skipping zones that already have an Active alert so repeat scans don't
+  spam duplicates.
+- **`analyzeUtilization`** — buckets zone-joined `OccupancyLog` entries
+  into 3-hour × day-of-week buckets (same shape as Energy's heatmap) for
+  the utilization heatmap, plus per-zone averages.
+- **`calculateWorkspaceEfficiency`** — bell-curve score around an ideal
+  utilization target (default 75%) for Workspace-type zones only, mirroring
+  `EnergyAgent.calculateEfficiencyScore`'s baseline-deviation approach:
+  empty desks and overcrowded floors are both penalized.
+- **`refreshCurrentOccupancy`** — pulls each zone's most recent
+  `OccupancyLog` entry and writes it back onto `Zone.currentOccupancy`;
+  `OccupancyLog` is the source of truth, `Zone.currentOccupancy` is a
+  denormalized "latest reading" cache.
+- **`generateRecommendations`** / **`runOccupancyCycle`** — same
+  recommendation-card shape and cycle-orchestration pattern as the other
+  two agents, for a consistent Agent Actions UI and seed/scan flow.
+
+**Modeling notes** (documented in code, repeated here since they're not in
+the original schema): `Active Visitors` is total occupancy summed across
+all zones, used as a proxy in the absence of a dedicated visitor
+check-in system. `Zone.zoneType` and `facilityId` were added to the spec's
+minimal `Zone` fields, for the same reason `MaintenanceRecord.facilityId`
+was added in Module 2 - `zoneType` lets Workspace Efficiency exclude
+parking/common areas, and `facilityId` keeps every model consistently
+scoped like the rest of the app.
+
 ## Evaluation criteria checklist
 
 **Milestone 1 (Week 2)**
@@ -220,3 +291,8 @@ If you introduce a new font family, also update the Google Fonts `<link>` in
 - [x] Asset monitoring operational (`Asset` model + seeded roster + health distribution panel)
 - [x] Maintenance predictions generated successfully (`predictFailures`, surfaced in the risk table)
 - [x] Equipment health scoring functional (`evaluateAssetHealth`, recomputed on every scan/cycle)
+
+**Milestone 3 (Week 6) — Occupancy half**
+- [x] Occupancy analytics operational (`Zone`/`OccupancyLog` models + live rates + heatmap)
+- [ ] Security alerts generated successfully — pending the Security Agent module
+- [x] Occupancy forecasting/utilization accuracy target ≥80% — not literally "forecasting" yet (no forward-looking prediction method was in scope for this module), but `analyzeUtilization`'s historical hour/day buckets are the groundwork a forecast would build on

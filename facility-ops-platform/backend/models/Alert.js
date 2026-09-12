@@ -30,6 +30,8 @@ const AlertSchema = new Schema(
         'ASSET_HEALTH_CRITICAL',
         'PREDICTED_FAILURE_RISK',
         'MAINTENANCE_OVERDUE',
+        // Occupancy Agent (Module 3)
+        'ZONE_OVERCROWDING',
       ],
       required: true,
     },

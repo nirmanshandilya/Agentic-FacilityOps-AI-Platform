@@ -8,6 +8,7 @@ const connectDB = require('./config/db');
 const facilityRoutes = require('./routes/facilityRoutes');
 const energyRoutes = require('./routes/energyRoutes');
 const maintenanceRoutes = require('./routes/maintenanceRoutes');
+const occupancyRoutes = require('./routes/occupancyRoutes');
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/energy', energyRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/occupancy', occupancyRoutes);
 
 // ---------- 404 handler ----------
 app.use((req, res) => {

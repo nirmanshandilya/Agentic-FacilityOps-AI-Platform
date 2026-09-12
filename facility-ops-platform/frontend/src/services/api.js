@@ -57,7 +57,26 @@ export const fetchWorkOrders = (facilityId, status) =>
 export const updateWorkOrderStatus = (maintenanceId, status) =>
   api.patch(`/maintenance/work-orders/${maintenanceId}`, { status }).then((r) => r.data);
 
-export const seedMaintenanceData = (facilityId, count = 10) =>
-  api.post(`/maintenance/${facilityId}/seed`, undefined, { params: { count } }).then((r) => r.data);
+export const seedMaintenanceData = (facilityId, count = 10, append = false) =>
+  api.post(`/maintenance/${facilityId}/seed`, undefined, { params: { count, append } }).then((r) => r.data);
+
+// Occupancy Agent
+export const fetchOccupancySummary = (facilityId) =>
+  api.get(`/occupancy/${facilityId}/summary`).then((r) => r.data);
+
+export const fetchZones = (facilityId) =>
+  api.get(`/occupancy/${facilityId}/zones`).then((r) => r.data);
+
+export const fetchOccupancyHeatmap = (facilityId, range = '7d') =>
+  api.get(`/occupancy/${facilityId}/heatmap`, { params: { range } }).then((r) => r.data);
+
+export const fetchOccupancyRecommendations = (facilityId) =>
+  api.get(`/occupancy/${facilityId}/recommendations`).then((r) => r.data);
+
+export const runOccupancyCycle = (facilityId) =>
+  api.post(`/occupancy/${facilityId}/run-cycle`).then((r) => r.data);
+
+export const seedOccupancyData = (facilityId, append = false) =>
+  api.post(`/occupancy/${facilityId}/seed`, undefined, { params: { append } }).then((r) => r.data);
 
 export default api;

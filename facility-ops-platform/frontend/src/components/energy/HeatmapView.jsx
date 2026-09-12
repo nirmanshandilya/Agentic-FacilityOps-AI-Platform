@@ -35,13 +35,13 @@ export default function HeatmapView({ usage = [] }) {
   }
 
   return (
-    <div className="panel p-panel h-[320px] flex flex-col">
+    <div className="panel p-panel h-[320px] flex flex-col overflow-hidden">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-heading font-semibold text-text-primary">Energy Load Heatmap</h3>
         <span className="text-[11px] text-text-muted">kWh intensity by day / time block</span>
       </div>
 
-      <div className="flex-1 flex flex-col justify-between">
+      <div className="flex-1 flex flex-col min-h-0">
         <div className="grid" style={{ gridTemplateColumns: `40px repeat(${HOUR_BUCKETS.length}, 1fr)`, gap: 4 }}>
           <div />
           {HOUR_BUCKETS.map((h) => (
@@ -59,7 +59,7 @@ export default function HeatmapView({ usage = [] }) {
                   <div
                     key={`${day}-${h}`}
                     title={`${day} ${h}:00 — ${value.toFixed(1)} kWh`}
-                    className="aspect-square rounded-[4px] transition-colors"
+                    className="h-5 rounded-[4px] transition-colors"
                     style={{ backgroundColor: intensityColor(value) }}
                   />
                 );

@@ -1,30 +1,31 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { HardDrive, ClipboardList, AlertTriangle, TrendingDown, Database, Loader2, RefreshCcw } from 'lucide-react';
+import { Building2, Users, Gauge, Loader2, Database, RefreshCcw } from 'lucide-react';
 
 import Navbar from '../components/common/Navbar';
 import Sidebar from '../components/common/Sidebar';
 import StatCard from '../components/common/StatCard';
-import HealthDistributionPanel from '../components/maintenance/HealthDistributionPanel';
-import FailureRiskTable from '../components/maintenance/FailureRiskTable';
-import AgentActionsPanel from '../components/maintenance/AgentActionsPanel';
+import ZoneDistributionPanel from '../components/occupancy/ZoneDistributionPanel';
+import OccupancyHeatmap from '../components/occupancy/OccupancyHeatmap';
+import SpaceOptimizationPanel from '../components/occupancy/SpaceOptimizationPanel';
 
 import {
   fetchFacilities,
-  fetchMaintenanceSummary,
-  fetchAssets,
-  fetchPredictions,
-  fetchMaintenanceRecommendations,
-  runPredictiveCycle,
-  seedMaintenanceData,
+  fetchOccupancySummary,
+  fetchZones,
+  fetchOccupancyHeatmap,
+  fetchOccupancyRecommendations,
+  runOccupancyCycle,
+  seedOccupancyData,
 } from '../services/api';
 
-export default function MaintenanceDashboardPage({ onNavigate }) {
+export default function OccupancyDashboardPage({ onNavigate }) {
   const [facilities, setFacilities] = useState([]);
   const [selectedFacilityId, setSelectedFacilityId] = useState(null);
+  const [range, setRange] = useState('7d');
 
   const [summary, setSummary] = useState(null);
-  const [assets, setAssets] = useState([]);
-  const [predictions, setPredictions] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [heatmapBuckets, setHeatmapBuckets] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -32,7 +33,7 @@ export default function MaintenanceDashboardPage({ onNavigate }) {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load facility list once (same facilities used by the Energy module).
+  // Same facility list used by Energy and Maintenance.
   useEffect(() => {
     fetchFacilities()
       .then((res) => {
@@ -47,22 +48,22 @@ export default function MaintenanceDashboardPage({ onNavigate }) {
     setLoading(true);
     setError(null);
     try {
-      const [summaryRes, assetsRes, predictionsRes, recRes] = await Promise.all([
-        fetchMaintenanceSummary(selectedFacilityId),
-        fetchAssets(selectedFacilityId),
-        fetchPredictions(selectedFacilityId),
-        fetchMaintenanceRecommendations(selectedFacilityId),
+      const [summaryRes, zonesRes, heatmapRes, recRes] = await Promise.all([
+        fetchOccupancySummary(selectedFacilityId),
+        fetchZones(selectedFacilityId),
+        fetchOccupancyHeatmap(selectedFacilityId, range),
+        fetchOccupancyRecommendations(selectedFacilityId),
       ]);
       setSummary(summaryRes.data);
-      setAssets(assetsRes.data);
-      setPredictions(predictionsRes.data);
+      setZones(zonesRes.data);
+      setHeatmapBuckets(heatmapRes.data.buckets || []);
       setRecommendations(recRes.data);
     } catch (err) {
       setError(err?.response?.data?.message || err.message);
     } finally {
       setLoading(false);
     }
-  }, [selectedFacilityId]);
+  }, [selectedFacilityId, range]);
 
   useEffect(() => {
     loadDashboardData();
@@ -73,7 +74,7 @@ export default function MaintenanceDashboardPage({ onNavigate }) {
     setSeeding(true);
     setError(null);
     try {
-      await seedMaintenanceData(selectedFacilityId, 10, assets.length > 0);
+      await seedOccupancyData(selectedFacilityId, zones.length > 0);
       await loadDashboardData();
     } catch (err) {
       setError(err?.response?.data?.message || err.message);
@@ -87,7 +88,7 @@ export default function MaintenanceDashboardPage({ onNavigate }) {
     setScanning(true);
     setError(null);
     try {
-      await runPredictiveCycle(selectedFacilityId);
+      await runOccupancyCycle(selectedFacilityId);
       await loadDashboardData();
     } catch (err) {
       setError(err?.response?.data?.message || err.message);
@@ -98,15 +99,16 @@ export default function MaintenanceDashboardPage({ onNavigate }) {
 
   return (
     <div className="flex min-h-screen bg-surface-base">
-      <Sidebar active="maintenance" onNavigate={onNavigate} />
+      <Sidebar active="occupancy" onNavigate={onNavigate} />
 
       <div className="flex-1 min-w-0">
         <Navbar
-          title="Predictive Maintenance"
+          title="Occupancy Intelligence"
           facilities={facilities}
           selectedFacilityId={selectedFacilityId}
           onFacilityChange={setSelectedFacilityId}
-          showRangeFilter={false}
+          range={range}
+          onRangeChange={setRange}
           isLive={!loading && !!summary}
         />
 
@@ -117,7 +119,7 @@ export default function MaintenanceDashboardPage({ onNavigate }) {
 
           {!facilities.length && !error && (
             <div className="panel p-panel text-sm text-text-secondary">
-              No facilities yet — create one from the Energy dashboard first, then seed assets below.
+              No facilities yet — create one from the Energy dashboard first, then seed zone data below.
             </div>
           )}
 
@@ -134,7 +136,7 @@ export default function MaintenanceDashboardPage({ onNavigate }) {
                 className="flex items-center gap-2 text-xs font-medium px-3.5 py-2 rounded-md bg-surface-elevated text-text-secondary hover:text-text-primary disabled:opacity-50"
               >
                 {scanning ? <Loader2 size={14} className="animate-spin" /> : <RefreshCcw size={14} />}
-                {scanning ? 'Scanning…' : 'Run Predictive Scan'}
+                {scanning ? 'Scanning…' : 'Run Occupancy Scan'}
               </button>
               <button
                 type="button"
@@ -143,7 +145,7 @@ export default function MaintenanceDashboardPage({ onNavigate }) {
                 className="flex items-center gap-2 text-xs font-medium px-3.5 py-2 rounded-md bg-brand-primaryMuted text-brand-primary hover:brightness-110 disabled:opacity-50"
               >
                 {seeding ? <Loader2 size={14} className="animate-spin" /> : <Database size={14} />}
-                {seeding ? 'Seeding assets…' : assets.length > 0 ? 'Add 10 More Assets' : 'Seed Asset Roster'}
+                {seeding ? 'Seeding…' : zones.length > 0 ? 'Refresh Occupancy History' : 'Seed Zone Data'}
               </button>
             </div>
           </div>
@@ -151,53 +153,45 @@ export default function MaintenanceDashboardPage({ onNavigate }) {
           {/* KPI row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-grid">
             <StatCard
-              icon={HardDrive}
-              label="Assets Monitored"
-              value={summary ? summary.assetsMonitored.toLocaleString() : '—'}
+              icon={Building2}
+              label="Zones Monitored"
+              value={zones.length || '—'}
               subtext="across this facility"
               accent="indigo"
             />
             <StatCard
-              icon={ClipboardList}
-              label="Active Maintenance Tickets"
-              value={summary ? summary.activeTickets.toLocaleString() : '—'}
-              subtext="pending or in progress"
+              icon={Gauge}
+              label="Occupancy Rate"
+              value={summary ? summary.occupancyRatePct : '—'}
+              unit={summary ? '%' : ''}
+              subtext="facility-wide average"
               accent="teal"
             />
             <StatCard
-              icon={AlertTriangle}
-              label="Predicted Failures"
-              value={summary ? summary.predictedFailures.toLocaleString() : '—'}
-              subtext="assets at risk"
-              accent="critical"
+              icon={Users}
+              label="Active Visitors"
+              value={summary ? summary.activeVisitors.toLocaleString() : '—'}
+              subtext="currently in the building"
+              accent="amber"
             />
             <StatCard
-              icon={TrendingDown}
-              label="Downtime Reduction"
-              value={summary ? summary.downtimeReductionPct : '—'}
-              unit={summary ? '%' : ''}
-              subtext="vs. reactive baseline"
+              icon={Gauge}
+              label="Workspace Efficiency"
+              value={summary?.workspaceEfficiency ?? '—'}
+              unit={summary?.workspaceEfficiency !== null && summary?.workspaceEfficiency !== undefined ? '%' : ''}
+              subtext="ideal-utilization score"
               accent="success"
             />
           </div>
 
-          {/* Health distribution + failure risk table */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-grid">
-            <div className="xl:col-span-1">
-              <HealthDistributionPanel assets={assets} />
-            </div>
-            <div className="xl:col-span-2">
-              <FailureRiskTable predictions={predictions} loading={loading} />
-            </div>
+          {/* Zone distribution + heatmap */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-grid">
+            <ZoneDistributionPanel zones={zones} />
+            <OccupancyHeatmap buckets={heatmapBuckets} />
           </div>
 
           {/* Agent actions */}
-          <AgentActionsPanel
-            facilityId={selectedFacilityId}
-            recommendations={recommendations}
-            loading={loading}
-            onWorkOrderCreated={loadDashboardData}
-          />
+          <SpaceOptimizationPanel recommendations={recommendations} loading={loading} />
         </main>
       </div>
     </div>
