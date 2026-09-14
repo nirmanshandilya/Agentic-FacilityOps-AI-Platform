@@ -32,6 +32,9 @@ const AlertSchema = new Schema(
         'MAINTENANCE_OVERDUE',
         // Occupancy Agent (Module 3)
         'ZONE_OVERCROWDING',
+        // Security Agent (Module 4)
+        'SECURITY_BREACH',
+        'VISITOR_OVERSTAY',
       ],
       required: true,
     },

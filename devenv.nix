@@ -52,6 +52,10 @@
 
   # https://devenv.sh/processes/
   # processes.dev.exec = "${lib.getExe pkgs.watchexec} -n -- ls -la";
+  processes = {
+    backend.exec = "cd backend && npm run dev";
+    frontend.exec = "cd frontend && npm run dev";
+  };
 
   # https://devenv.sh/services/
   # services.postgres.enable = true;
@@ -65,6 +69,7 @@
   enterShell = ''
     hello         # Run scripts directly
     git --version # Use packages
+    cd facility-ops-platform
   '';
 
   # https://devenv.sh/tasks/

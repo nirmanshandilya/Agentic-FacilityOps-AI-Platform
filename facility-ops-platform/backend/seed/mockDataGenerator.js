@@ -279,6 +279,131 @@ function _occupancyCurve(hour) {
   return Math.max(0.08, value); // small nighttime baseline load
 }
 
+// ---------------------------------------------------------------------
+// Module 4: Security Agent - security event + visitor seeding
+// ---------------------------------------------------------------------
+
+const SECURITY_LOCATIONS = ['Main Entrance', 'Lobby', 'Parking Garage', 'Loading Dock', 'Server Room', 'Rear Exit'];
+
+// Realistic mix: mostly routine CCTV noise and the occasional denied
+// badge, with a small chance of an actual breach-worthy event so
+// detectBreach() has something real to catch on a fresh seed.
+const EVENT_TYPE_WEIGHTS = [
+  { type: 'CCTV_ANOMALY', severity: 'Low', weight: 45 },
+  { type: 'BADGE_DENIED', severity: 'Low', weight: 30 },
+  { type: 'DOOR_FORCED_OPEN', severity: 'Medium', weight: 10 },
+  { type: 'UNAUTHORIZED_ACCESS', severity: 'Critical', weight: 8 },
+  { type: 'TAILGATING', severity: 'High', weight: 7 },
+];
+
+function _weightedRandomEventType() {
+  const totalWeight = EVENT_TYPE_WEIGHTS.reduce((sum, e) => sum + e.weight, 0);
+  let roll = Math.random() * totalWeight;
+  for (const entry of EVENT_TYPE_WEIGHTS) {
+    if (roll < entry.weight) return entry;
+    roll -= entry.weight;
+  }
+  return EVENT_TYPE_WEIGHTS[0];
+}
+
+/**
+ * Generates historical SecurityEvent entries for a facility - roughly
+ * 3-6 events per day across the given window, weighted toward routine
+ * noise with occasional genuine breach events.
+ *
+ * @param {string} facilityId
+ * @param {number} days
+ * @returns {Array} SecurityEvent-shaped documents (without _id)
+ */
+function generateSecurityEventsForFacility(facilityId, days = 14) {
+  const events = [];
+  const now = Date.now();
+
+  for (let d = 0; d < days; d += 1) {
+    const eventsToday = 3 + Math.floor(Math.random() * 4); // 3-6 per day
+    for (let i = 0; i < eventsToday; i += 1) {
+      const { type, severity } = _weightedRandomEventType();
+      const location = SECURITY_LOCATIONS[Math.floor(Math.random() * SECURITY_LOCATIONS.length)];
+      const timestamp = new Date(now - (days - d) * 24 * 60 * 60 * 1000 - Math.random() * 24 * 60 * 60 * 1000);
+
+      events.push({
+        eventId: uuidv4(),
+        facilityId,
+        eventType: type,
+        location,
+        timestamp,
+        severity,
+        status: 'Resolved', // historical events default resolved; recent ones get reopened below
+      });
+    }
+  }
+
+  // Leave the most recent few events open/investigating so the dashboard
+  // and detectBreach() have live, unresolved data to work with immediately.
+  events
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 4)
+    .forEach((e) => {
+      e.status = e.severity === 'Critical' || e.severity === 'High' ? 'Open' : 'Investigating';
+    });
+
+  return events;
+}
+
+const VISITOR_NAMES = ['Jordan Lee', 'Casey Kim', 'Morgan Patel', 'Riley Chen', 'Taylor Brooks', 'Alex Rivera', 'Sam Okafor', 'Jamie Novak'];
+const VISITOR_LOCATIONS = ['Office Floors', 'Meeting Rooms', 'Common Areas', 'Lobby'];
+
+/**
+ * Generates a visitor roster with a realistic mix of currently-checked-in,
+ * already-checked-out, and deliberately overdue visitors (expectedCheckOut
+ * in the past but status still CheckedIn) so
+ * SecurityAgent.refreshVisitorStatuses() has something to flag as
+ * Overstayed on the very first cycle run.
+ *
+ * @param {string} facilityId
+ * @param {number} count
+ * @returns {Array} Visitor-shaped documents (without _id)
+ */
+function generateVisitorsForFacility(facilityId, count = 8) {
+  const now = Date.now();
+  const visitors = [];
+
+  for (let i = 0; i < count; i += 1) {
+    const name = VISITOR_NAMES[i % VISITOR_NAMES.length];
+    const location = VISITOR_LOCATIONS[Math.floor(Math.random() * VISITOR_LOCATIONS.length)];
+    const hoursAgoCheckedIn = 1 + Math.random() * 6; // checked in 1-7 hours ago
+    const checkInTime = new Date(now - hoursAgoCheckedIn * 60 * 60 * 1000);
+    const visitDurationHours = 1 + Math.random() * 3; // expected 1-4 hour visit
+    const expectedCheckOut = new Date(checkInTime.getTime() + visitDurationHours * 60 * 60 * 1000);
+
+    const outcome = Math.random();
+    let status = 'CheckedIn';
+    let actualCheckOutTime = null;
+
+    if (outcome < 0.25) {
+      // already left, on time
+      status = 'CheckedOut';
+      actualCheckOutTime = new Date(Math.min(now, expectedCheckOut.getTime() + Math.random() * 30 * 60 * 1000));
+    } else if (outcome < 0.4 && expectedCheckOut.getTime() < now) {
+      // deliberately overdue - still "CheckedIn" until refreshVisitorStatuses() catches it
+      status = 'CheckedIn';
+    }
+
+    visitors.push({
+      visitorId: uuidv4(),
+      facilityId,
+      name,
+      checkInTime,
+      expectedCheckOut,
+      actualCheckOutTime,
+      currentLocation: status === 'CheckedOut' ? null : location,
+      status,
+    });
+  }
+
+  return visitors;
+}
+
 /**
  * Standalone CLI seeding entrypoint: `npm run seed`.
  * Creates a handful of demo facilities (if none exist) and populates
@@ -292,12 +417,16 @@ async function runStandaloneSeed() {
   const Asset = require('../models/Asset');
   const Zone = require('../models/Zone');
   const OccupancyLog = require('../models/OccupancyLog');
+  const SecurityEvent = require('../models/SecurityEvent');
+  const Visitor = require('../models/Visitor');
   const MaintenanceAgent = require('../agents/MaintenanceAgent');
   const OccupancyAgent = require('../agents/OccupancyAgent');
+  const SecurityAgent = require('../agents/SecurityAgent');
 
   await connectDB();
   const maintenanceAgent = new MaintenanceAgent();
   const occupancyAgent = new OccupancyAgent();
+  const securityAgent = new SecurityAgent();
 
   const demoFacilities = [
     { facilityName: 'Riverside Tech Campus', facilityType: 'IT Park', location: 'Austin, TX' },
@@ -349,6 +478,26 @@ async function runStandaloneSeed() {
         `[seed] Seeded ${zones.length} zones + ${logs.length} occupancy logs for ${facility.facilityName}; ${occCycle.overcrowded.length} zone(s) currently overcrowded.`
       );
     }
+
+    const existingSecurityCount = await SecurityEvent.countDocuments({ facilityId: facility.facilityId });
+    if (existingSecurityCount > 0) {
+      console.log(`[seed] Skipping security events for ${facility.facilityName}, already has ${existingSecurityCount}`);
+    } else {
+      const eventDefs = generateSecurityEventsForFacility(facility.facilityId, 14);
+      await SecurityEvent.insertMany(eventDefs);
+
+      const existingVisitorCount = await Visitor.countDocuments({ facilityId: facility.facilityId });
+      let visitors = [];
+      if (existingVisitorCount === 0) {
+        const visitorDefs = generateVisitorsForFacility(facility.facilityId, 8);
+        visitors = await Visitor.insertMany(visitorDefs);
+      }
+
+      const secCycle = await securityAgent.runSecurityCycle(facility.facilityId);
+      console.log(
+        `[seed] Seeded ${eventDefs.length} security events + ${visitors.length} visitors for ${facility.facilityName}; ${secCycle.breaches.length} active breach(es), ${secCycle.overstayed.length} overstayed visitor(s).`
+      );
+    }
   }
 
   console.log('[seed] Done.');
@@ -362,6 +511,8 @@ module.exports = {
   generateMaintenanceHistory,
   generateZonesForFacility,
   generateOccupancyLogsForZones,
+  generateSecurityEventsForFacility,
+  generateVisitorsForFacility,
   runStandaloneSeed,
 };
 

@@ -41,7 +41,7 @@ export default function HeatmapView({ usage = [] }) {
         <span className="text-[11px] text-text-muted">kWh intensity by day / time block</span>
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col justify-between min-h-0">
         <div className="grid" style={{ gridTemplateColumns: `40px repeat(${HOUR_BUCKETS.length}, 1fr)`, gap: 4 }}>
           <div />
           {HOUR_BUCKETS.map((h) => (

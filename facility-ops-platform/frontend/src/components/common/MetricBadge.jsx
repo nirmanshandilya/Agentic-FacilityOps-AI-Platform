@@ -8,6 +8,13 @@ const SEVERITY_STYLES = {
   Active: 'bg-status-warningMuted text-status-warning',
   Acknowledged: 'bg-status-infoMuted text-status-info',
   Resolved: 'bg-status-successMuted text-status-success',
+  // SecurityEvent.status (Module 4)
+  Open: 'bg-status-criticalMuted text-status-critical',
+  Investigating: 'bg-status-warningMuted text-status-warning',
+  // Visitor.status (Module 4)
+  CheckedIn: 'bg-status-successMuted text-status-success',
+  CheckedOut: 'bg-surface-elevated text-text-secondary',
+  Overstayed: 'bg-status-warningMuted text-status-warning',
 };
 
 /**

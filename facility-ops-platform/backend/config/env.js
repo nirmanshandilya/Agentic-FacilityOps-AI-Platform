@@ -46,6 +46,20 @@ const env = {
       // how many days of OccupancyLog history feed the utilization heatmap
       baselineWindowDays: parseInt(process.env.OCC_BASELINE_WINDOW_DAYS, 10) || 14,
     },
+    security: {
+      // hour-of-day window (24h clock) treated as "off-hours" for CCTV
+      // analysis - motion detected in this window is escalated to
+      // Off-Hours Activity instead of a routine Motion Detected reading
+      offHoursStartHour: parseInt(process.env.SEC_OFF_HOURS_START, 10) || 20,
+      offHoursEndHour: parseInt(process.env.SEC_OFF_HOURS_END, 10) || 6,
+      // simulated % chance a given camera reads as offline on any given scan
+      cctvOfflineProbabilityPct: parseFloat(process.env.SEC_CCTV_OFFLINE_PROBABILITY_PCT) || 5,
+      // grace period after expectedCheckOut before a still-checked-in
+      // visitor is flagged Overstayed
+      overstayGraceMinutes: parseInt(process.env.SEC_OVERSTAY_GRACE_MINUTES, 10) || 30,
+      // how many days of SecurityEvent history a scan considers "active"
+      eventLookbackDays: parseInt(process.env.SEC_EVENT_LOOKBACK_DAYS, 10) || 14,
+    },
   },
 };
 

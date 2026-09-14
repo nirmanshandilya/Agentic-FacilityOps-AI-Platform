@@ -79,4 +79,32 @@ export const runOccupancyCycle = (facilityId) =>
 export const seedOccupancyData = (facilityId, append = false) =>
   api.post(`/occupancy/${facilityId}/seed`, undefined, { params: { append } }).then((r) => r.data);
 
+// Security Agent
+export const fetchSecuritySummary = (facilityId) =>
+  api.get(`/security/${facilityId}/summary`).then((r) => r.data);
+
+export const fetchSecurityEvents = (facilityId, status) =>
+  api.get(`/security/${facilityId}/events`, { params: status ? { status } : {} }).then((r) => r.data);
+
+export const fetchVisitors = (facilityId, status) =>
+  api.get(`/security/${facilityId}/visitors`, { params: status ? { status } : {} }).then((r) => r.data);
+
+export const fetchCctvFeed = (facilityId) =>
+  api.get(`/security/${facilityId}/cctv-feed`).then((r) => r.data);
+
+export const fetchAccessLogs = (facilityId, limit = 30) =>
+  api.get(`/security/${facilityId}/access-logs`, { params: { limit } }).then((r) => r.data);
+
+export const fetchSecurityRecommendations = (facilityId) =>
+  api.get(`/security/${facilityId}/recommendations`).then((r) => r.data);
+
+export const runSecurityCycle = (facilityId) =>
+  api.post(`/security/${facilityId}/run-cycle`).then((r) => r.data);
+
+export const updateSecurityEventStatus = (eventId, status) =>
+  api.patch(`/security/events/${eventId}`, { status }).then((r) => r.data);
+
+export const seedSecurityData = (facilityId, append = false) =>
+  api.post(`/security/${facilityId}/seed`, undefined, { params: { append } }).then((r) => r.data);
+
 export default api;

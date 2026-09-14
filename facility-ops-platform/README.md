@@ -1,4 +1,4 @@
-# Agentic FacilityOps AI Platform — Modules 1, 2 & 3
+# Agentic FacilityOps AI Platform — Modules 1, 2, 3 & 4
 
 MERN-stack build of the Agentic FacilityOps AI Platform, now covering:
 
@@ -9,8 +9,10 @@ MERN-stack build of the Agentic FacilityOps AI Platform, now covering:
   Predictive Maintenance dashboard.
 - **Module 3 — Occupancy Agent** (Milestone 3, part 1): zone occupancy
   monitoring, overcrowding detection, utilization heatmaps, and the
-  Occupancy Intelligence dashboard. (Security Agent, the other half of
-  Milestone 3, is a separate follow-up module.)
+  Occupancy Intelligence dashboard.
+- **Module 4 — Security Agent** (Milestone 3, part 2): access monitoring,
+  breach detection, simulated CCTV analysis, visitor tracking, and the
+  Security Intelligence dashboard. This completes Milestone 3.
 
 ## Stack
 
@@ -23,11 +25,11 @@ MERN-stack build of the Agentic FacilityOps AI Platform, now covering:
 facility-ops-platform/
 ├── backend/
 │   ├── config/        # DB connection + centralized env config
-│   ├── models/        # Facility, EnergyUsage, Alert, Asset, MaintenanceRecord, Zone, OccupancyLog
-│   ├── controllers/    # facilityController, energyController, maintenanceController, occupancyController
-│   ├── routes/         # facilityRoutes, energyRoutes, maintenanceRoutes, occupancyRoutes
-│   ├── agents/          # EnergyAgent.js, MaintenanceAgent.js, OccupancyAgent.js
-│   ├── seed/            # mock IoT/utility + asset/maintenance + zone/occupancy data generator
+│   ├── models/        # Facility, EnergyUsage, Alert, Asset, MaintenanceRecord, Zone, OccupancyLog, SecurityEvent, Visitor
+│   ├── controllers/    # facilityController, energyController, maintenanceController, occupancyController, securityController
+│   ├── routes/         # facilityRoutes, energyRoutes, maintenanceRoutes, occupancyRoutes, securityRoutes
+│   ├── agents/          # EnergyAgent.js, MaintenanceAgent.js, OccupancyAgent.js, SecurityAgent.js
+│   ├── seed/            # mock IoT/utility + asset/maintenance + zone/occupancy + security/visitor data generator
 │   └── server.js
 └── frontend/
     └── src/
@@ -36,24 +38,25 @@ facility-ops-platform/
         ├── components/energy/       # EnergyCharts, HeatmapView, HVACPerformance, AIRecommendationsCard
         ├── components/maintenance/  # HealthDistributionPanel, FailureRiskTable, AgentActionsPanel
         ├── components/occupancy/    # ZoneDistributionPanel, OccupancyHeatmap, SpaceOptimizationPanel
-        ├── pages/                   # EnergyDashboardPage.jsx, MaintenanceDashboardPage.jsx, OccupancyDashboardPage.jsx
+        ├── components/security/     # LiveSecurityFeedGrid, AccessLogsTable, SecurityActionsPanel
+        ├── pages/                   # EnergyDashboardPage.jsx, MaintenanceDashboardPage.jsx, OccupancyDashboardPage.jsx, SecurityDashboardPage.jsx
         └── services/                # api.js
 ```
 
-The structure is deliberately flat and domain-separated so future agents
-(Security, Cost) can each add their own `models/`, `controllers/`,
-`routes/`, and `agents/*Agent.js` file, plus a `components/<domain>/` folder
-and `pages/<Domain>DashboardPage.jsx`, following the same pattern the first
-three modules already use. `App.jsx` holds an `activeModule` switch and the
+The structure is deliberately flat and domain-separated so a future Cost
+Agent can add its own `models/`, `controllers/`, `routes/`, and
+`agents/*Agent.js` file, plus a `components/cost/` folder and
+`pages/CostDashboardPage.jsx`, following the same pattern the first four
+modules already use. `App.jsx` holds an `activeModule` switch and the
 Sidebar's `onNavigate` callback drives it — enabling a new module is a
 one-line flip in `Sidebar.jsx` (`enabled: true`) plus a new `MODULES` entry
 in `App.jsx`.
 
-> Note: the page-level component (`OccupancyDashboardPage.jsx`) lives in
-> `pages/`, not `components/occupancy/`, to stay consistent with
-> `EnergyDashboardPage.jsx` and `MaintenanceDashboardPage.jsx` -
-> `components/occupancy/` holds only the reusable sub-components
-> (`ZoneDistributionPanel`, `OccupancyHeatmap`, `SpaceOptimizationPanel`).
+> Note: page-level components (`EnergyDashboardPage.jsx`,
+> `MaintenanceDashboardPage.jsx`, `OccupancyDashboardPage.jsx`,
+> `SecurityDashboardPage.jsx`) all live in `pages/`, not in their matching
+> `components/<domain>/` folder — those folders hold only the reusable
+> sub-components.
 
 ## Getting started
 
@@ -64,9 +67,10 @@ cd backend
 npm install
 cp .env.example .env      # edit MONGO_URI if not running Mongo locally
 npm run seed               # creates 3 demo facilities, 14 days of energy history,
-                             # a 10-asset roster + predictive cycle, and 4 zones +
-                             # 14 days of occupancy history + an occupancy cycle,
-                             # per facility
+                             # a 10-asset roster + predictive cycle, 4 zones + 14 days
+                             # of occupancy history + an occupancy cycle, and 14 days
+                             # of security events + a visitor roster + a security
+                             # cycle, per facility
 npm run dev                 # starts the API on http://localhost:5000
 ```
 
@@ -122,6 +126,22 @@ same facility list.
   recomputes rates, and re-checks for overcrowding without adding new history.
 - The heatmap and KPIs respect the 24H / 7D / 30D range filter; zone
   distribution and recommendations always reflect the current live reading.
+
+**Security Intelligence**
+- Use **Seed Security Data** to generate 14 days of security event history
+  (weighted toward routine CCTV noise, with occasional real breach events)
+  plus an 8-visitor roster with a couple deliberately overdue, then run one
+  security cycle. Click it again afterward (now labeled **Add More
+  History**) to layer on more event history.
+- **Run Security Scan** re-checks visitor overstays, re-scans unresolved
+  events for breaches, and re-runs the simulated CCTV analysis.
+- The Live Security Feed is simulated (there's no real camera integration) -
+  each tile's status is deterministic per camera per hour, so it won't
+  flicker on every refresh but will change from one hour to the next.
+- **Initiate Zone Lockdown** on a breach recommendation updates a real
+  `SecurityEvent`'s status. **Dispatch Security Guard** on a CCTV
+  recommendation is a local-only acknowledgment, since simulated camera
+  detections aren't persisted as their own record.
 
 ## Restyling the entire platform
 
@@ -203,6 +223,20 @@ If you introduce a new font family, also update the Google Fonts `<link>` in
 
 `range` accepts `24h`, `7d` (default), or `30d`.
 
+## API reference (Module 4)
+
+| Method | Endpoint                                     | Description                                                |
+|--------|------------------------------------------------|----------------------------------------------------------------|
+| GET    | `/api/security/:facilityId/summary`            | KPI summary (security events, unauthorized access, active visitors, CCTV coverage) |
+| GET    | `/api/security/:facilityId/events?status=&severity=` | List security events                                     |
+| GET    | `/api/security/:facilityId/visitors?status=`   | List visitors                                                   |
+| GET    | `/api/security/:facilityId/cctv-feed`          | Simulated live camera feed data                                 |
+| GET    | `/api/security/:facilityId/access-logs?limit=` | Merged, normalized recent events + visitor movements            |
+| GET    | `/api/security/:facilityId/recommendations`    | Agent-generated response recommendations                        |
+| POST   | `/api/security/:facilityId/run-cycle`          | Full cycle: refresh visitors → detect breaches → CCTV analysis  |
+| POST   | `/api/security/:facilityId/seed?append=`       | Seed security event history + a visitor roster                  |
+| PATCH  | `/api/security/events/:eventId`                | Update a security event's status                                |
+
 ## EnergyAgent logic summary
 
 `backend/agents/EnergyAgent.js` implements:
@@ -279,6 +313,43 @@ minimal `Zone` fields, for the same reason `MaintenanceRecord.facilityId`
 was added in Module 2 - `zoneType` lets Workspace Efficiency exclude
 parking/common areas, and `facilityId` keeps every model consistently
 scoped like the rest of the app.
+
+## SecurityAgent logic summary
+
+`backend/agents/SecurityAgent.js` implements:
+
+- **`monitorAccess`** — pure validation of a batch of raw badge/visitor
+  access records: tallies granted/denied counts and flags structurally
+  invalid entries (missing fields, future timestamps). Doesn't interpret
+  meaning - that's `detectBreach`'s job once events are persisted.
+- **`detectBreach`** — flags `UNAUTHORIZED_ACCESS`/`TAILGATING`-type
+  `SecurityEvent`s and writes a Critical `SECURITY_BREACH` `Alert`,
+  idempotent against an existing Active alert for the same event.
+- **`analyzeCCTV`** — SIMULATED vision analysis. Deterministically hashes
+  each camera's ID with the current hour (same approach as
+  `MaintenanceAgent`'s per-asset stress factor) so results are stable
+  within an hour but change over time, rather than flickering on every
+  request or being fully random.
+- **`refreshVisitorStatuses`** — marks overdue `CheckedIn` visitors as
+  `Overstayed` (past `expectedCheckOut` + a grace period) and raises a
+  low-severity `VISITOR_OVERSTAY` alert per newly-flagged visitor.
+- **`getCameraRoster`** — derives a simulated camera list from the
+  facility's distinct `SecurityEvent` locations (or a default roster if
+  none exist yet).
+- **`generateRecommendations`** / **`runSecurityCycle`** — same
+  recommendation-card shape and cycle-orchestration pattern as the other
+  three agents.
+
+**Modeling notes**: `SecurityEvent` and `Visitor` both gained a
+`facilityId` field beyond the spec's minimal fields, for the same
+consistency reason as every other module. `SecurityEvent.status` and
+`Visitor.actualCheckOutTime` were added so events/visitors have a real
+lifecycle to update, rather than being write-once records. The "Dispatch
+Security Guard" action is local-only in the UI (no backend record) because
+it responds to a simulated CCTV detection, which isn't persisted anywhere
+— there's no real camera feed behind it. "Initiate Zone Lockdown" *is* a
+real API call, since breach recommendations are always tied to an actual
+`SecurityEvent` document.
 
 ## Evaluation criteria checklist
 

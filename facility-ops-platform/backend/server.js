@@ -9,6 +9,7 @@ const facilityRoutes = require('./routes/facilityRoutes');
 const energyRoutes = require('./routes/energyRoutes');
 const maintenanceRoutes = require('./routes/maintenanceRoutes');
 const occupancyRoutes = require('./routes/occupancyRoutes');
+const securityRoutes = require('./routes/securityRoutes');
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use('/api/facilities', facilityRoutes);
 app.use('/api/energy', energyRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/occupancy', occupancyRoutes);
+app.use('/api/security', securityRoutes);
 
 // ---------- 404 handler ----------
 app.use((req, res) => {

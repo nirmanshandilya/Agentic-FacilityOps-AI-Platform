@@ -2,16 +2,16 @@ import React from 'react';
 import { Zap, Wrench, Users, ShieldCheck, DollarSign, LayoutGrid } from 'lucide-react';
 
 /**
- * Thin icon-rail sidebar. Modules 1, 2 & 3 wire up Energy, Maintenance,
- * and Occupancy; the remaining agent slots (Security, Cost) still render
- * as disabled placeholders - one flip to `enabled: true` plus a new
- * entry in App.jsx's MODULES map is all a future module needs here.
+ * Thin icon-rail sidebar. Modules 1-4 wire up Energy, Maintenance,
+ * Occupancy, and Security; the remaining agent slot (Cost) still renders
+ * as a disabled placeholder - one flip to `enabled: true` plus a new
+ * entry in App.jsx's MODULES map is all it needs here.
  */
 const NAV_ITEMS = [
   { key: 'energy', label: 'Energy', icon: Zap, enabled: true },
   { key: 'maintenance', label: 'Maintenance', icon: Wrench, enabled: true },
   { key: 'occupancy', label: 'Occupancy', icon: Users, enabled: true },
-  { key: 'security', label: 'Security', icon: ShieldCheck, enabled: false },
+  { key: 'security', label: 'Security', icon: ShieldCheck, enabled: true },
   { key: 'cost', label: 'Cost', icon: DollarSign, enabled: false },
 ];
 
