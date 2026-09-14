@@ -38,7 +38,7 @@ An autonomous AI-powered facility operations platform designed to continuously m
 
 *   **Frontend Application:** [View on Vercel](#) *(Replace with your Vercel URL)*
 *   **Backend API Service:** [Hosted on Render](#) *(Replace with your Render URL)*
--->
+
 ## 📚 Detailed Documentation
 
 For an in-depth breakdown of the architecture, database schemas, and agent logic, please refer to the specific module documentation:
@@ -46,7 +46,7 @@ For an in-depth breakdown of the architecture, database schemas, and agent logic
 *   [Module 1: Foundation & Energy Intelligence](./path-to-module-1-readme.md)
 *   [Module 2: Predictive Maintenance System](./path-to-module-2-readme.md)
 *   *(Add links to subsequent modules here as they are built)*
-
+-->
 ---
 <div align="center">
   <i>Built for Smart, Secure & Sustainable Facilities.</i>
