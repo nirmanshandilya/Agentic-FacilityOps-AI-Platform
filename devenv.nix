@@ -53,8 +53,8 @@
   # https://devenv.sh/processes/
   # processes.dev.exec = "${lib.getExe pkgs.watchexec} -n -- ls -la";
   processes = {
-    backend.exec = "cd backend && npm run dev";
-    frontend.exec = "cd frontend && npm run dev";
+    backend.exec = "cd ./facility-ops-platform/backend && npm run dev";
+    frontend.exec = "cd ./facility-ops-platform/frontend && npm run dev";
   };
 
   # https://devenv.sh/services/
