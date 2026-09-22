@@ -1,0 +1,37 @@
+# --- Core ---
+python-dotenv==1.0.1
+pydantic==2.9.2
+
+# --- Data / ML (used across all agents) ---
+pandas==2.2.3
+numpy==1.26.4
+scikit-learn==1.5.2
+scipy==1.13.1
+faker==30.3.0          # synthetic data generation
+
+# --- Forecasting (Energy Agent, Occupancy Agent) ---
+prophet==1.1.6          # time-series forecasting; falls back easily to statsmodels if install is painful on Windows
+statsmodels==0.14.4
+
+# --- Database ---
+sqlalchemy==2.0.35
+# psycopg2-binary==2.9.9   # uncomment in Milestone 4 when you migrate SQLite -> PostgreSQL
+
+# --- API layer ---
+fastapi==0.115.0
+uvicorn[standard]==0.31.0
+
+# --- Dashboards ---
+streamlit==1.39.0
+plotly==5.24.1
+matplotlib==3.9.2
+
+# --- Notebooks ---
+jupyter==1.1.1
+ipykernel==6.29.5
+
+# --- Alerts / automation (Milestone 4, Alert & Automation Module) ---
+apscheduler==3.10.4     # scheduled jobs (e.g. nightly anomaly scans)
+
+# --- Testing ---
+pytest==8.3.3
