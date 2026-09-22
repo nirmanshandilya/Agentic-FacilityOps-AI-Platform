@@ -5,3 +5,14 @@ build/
 *.log
 .DS_Store
 .devenv/
+
+# --- Python stack ---
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.env
+*.db
+data/raw/*.csv
+data/processed/*.csv
+.pytest_cache/
