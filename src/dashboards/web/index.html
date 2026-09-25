@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FacilityOps — Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-0: #0B0F14;
+    --bg-1: #121822;
+    --bg-2: #1A222E;
+    --bg-3: #232C3A;
+    --border: #2A3441;
+    --text-hi: #EDEFF2;
+    --text-mid: #A8B3C2;
+    --text-low: #6B7686;
+
+    --energy: #F2B84B;
+    --energy-dim: #3A331F;
+    --maintenance: #4FD1C5;
+    --maintenance-dim: #1C3532;
+    --occupancy: #9B8CFF;
+    --occupancy-dim: #2A2640;
+    --security: #FF6B6B;
+    --security-dim: #3A2323;
+    --cost: #6FCF7A;
+    --cost-dim: #223328;
+    --overview: #6FA8FF;
+    --overview-dim: #1E2A3F;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-0);
+    color: var(--text-hi);
+    font-family: 'Inter', -apple-system, sans-serif;
+    display: flex;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  ::selection { background: var(--overview); color: var(--bg-0); }
+
+  /* ---------- Sidebar ---------- */
+  #sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--bg-1);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 16px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px 24px 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .brand-mark {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--overview);
+    box-shadow: 0 0 12px var(--overview);
+  }
+  .brand-text { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 15px; letter-spacing: 0.2px; }
+  .brand-sub { font-size: 11px; color: var(--text-low); margin-top: 1px; }
+
+  nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: var(--text-mid);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.15s ease, color 0.15s ease;
+    border-left: 2px solid transparent;
+  }
+  .nav-item:hover { background: var(--bg-2); color: var(--text-hi); }
+  .nav-item.active { background: var(--bg-2); color: var(--text-hi); }
+  .nav-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  .nav-item[data-panel="overview"].active { border-left-color: var(--overview); }
+  .nav-item[data-panel="energy"].active { border-left-color: var(--energy); }
+  .nav-item[data-panel="maintenance"].active { border-left-color: var(--maintenance); }
+  .nav-item[data-panel="occupancy"].active { border-left-color: var(--occupancy); }
+  .nav-item[data-panel="security"].active { border-left-color: var(--security); }
+  .nav-item[data-panel="cost"].active { border-left-color: var(--cost); }
+
+  #status-footer {
+    padding: 12px 8px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-low);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-low);
+  }
+  .pulse-dot.live { background: var(--cost); box-shadow: 0 0 8px var(--cost); animation: pulse 2s infinite; }
+  .pulse-dot.down { background: var(--security); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ---------- Main ---------- */
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  header {
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-0);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  #panel-title { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 600; }
+  #panel-sub { color: var(--text-low); font-size: 13px; margin-top: 3px; }
+  #refresh-btn {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text-mid);
+    padding: 8px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  #refresh-btn:hover { background: var(--bg-3); color: var(--text-hi); }
+
+  #content {
+    padding: 28px 32px 60px 32px;
+    flex: 1;
+    animation: fadein 0.25s ease;
+  }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ---------- KPI cards ---------- */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .kpi-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent, var(--overview));
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .kpi-label { font-size: 12.5px; color: var(--text-low); margin-bottom: 8px; }
+  .kpi-value { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 600; line-height: 1; }
+  .kpi-delta { font-size: 12px; margin-top: 6px; color: var(--text-mid); }
+  .kpi-delta.good { color: var(--cost); }
+  .kpi-delta.bad { color: var(--security); }
+
+  /* ---------- Grid layout ---------- */
+  .grid-2 { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; margin-bottom: 20px; }
+  .grid-1 { display: grid; grid-template-columns: 1fr; gap: 18px; margin-bottom: 20px; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .panel-box {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .panel-box h3 { font-family: 'Space Grotesk', sans-serif; font-size: 14.5px; font-weight: 600; margin-bottom: 14px; color: var(--text-hi); }
+  .chart-wrap { position: relative; height: 240px; }
+
+  /* ---------- Tables ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--text-low); font-weight: 500; font-size: 11.5px; padding: 0 10px 8px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--bg-2); color: var(--text-mid); }
+  tr:last-child td { border-bottom: none; }
+  td.hi { color: var(--text-hi); font-weight: 500; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+  .badge.critical { background: var(--security-dim); color: var(--security); }
+  .badge.high { background: var(--security-dim); color: var(--security); }
+  .badge.medium { background: var(--energy-dim); color: var(--energy); }
+  .badge.warning { background: var(--energy-dim); color: var(--energy); }
+  .badge.excellent { background: var(--cost-dim); color: var(--cost); }
+  .badge.info { background: var(--bg-2); color: var(--text-mid); }
+
+  /* ---------- Recommendations feed ---------- */
+  .rec-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--bg-2);
+    font-size: 13.5px;
+    color: var(--text-mid);
+    line-height: 1.5;
+  }
+  .rec-item:last-child { border-bottom: none; }
+  .rec-num {
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--overview);
+    font-weight: 600;
+    font-size: 13px;
+    flex-shrink: 0;
+    width: 20px;
+  }
+
+  /* ---------- Hero (Overview only) ---------- */
+  .hero {
+    background: linear-gradient(135deg, var(--bg-2) 0%, var(--bg-1) 100%);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 32px;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 40px;
+  }
+  .hero-score { font-family: 'Space Grotesk', sans-serif; font-size: 56px; font-weight: 700; line-height: 1; color: var(--overview); }
+  .hero-label { color: var(--text-low); font-size: 13px; margin-top: 6px; }
+  .hero-meta { display: flex; gap: 28px; flex-wrap: wrap; }
+  .hero-meta-item .kpi-value { font-size: 20px; }
+
+  .assumption-note {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: var(--text-mid);
+    margin-bottom: 18px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  /* ---------- Empty / error state ---------- */
+  #api-error {
+    display: none;
+    background: var(--security-dim);
+    border: 1px solid var(--security);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  #api-error h4 { color: var(--security); font-family: 'Space Grotesk', sans-serif; margin-bottom: 6px; }
+  #api-error p { color: var(--text-mid); font-size: 13.5px; line-height: 1.6; }
+  #api-error code { background: var(--bg-0); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+  select {
+    background: var(--bg-2);
+    color: var(--text-hi);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <div>
+      <div class="brand-text">FacilityOps</div>
+      <div class="brand-sub">Agentic AI Platform</div>
+    </div>
+  </div>
+  <nav>
+    <div class="nav-item active" data-panel="overview"><span class="nav-dot" style="background:var(--overview)"></span>Overview</div>
+    <div class="nav-item" data-panel="energy"><span class="nav-dot" style="background:var(--energy)"></span>Energy Agent</div>
+    <div class="nav-item" data-panel="maintenance"><span class="nav-dot" style="background:var(--maintenance)"></span>Maintenance Agent</div>
+    <div class="nav-item" data-panel="occupancy"><span class="nav-dot" style="background:var(--occupancy)"></span>Occupancy Agent</div>
+    <div class="nav-item" data-panel="security"><span class="nav-dot" style="background:var(--security)"></span>Security Agent</div>
+    <div class="nav-item" data-panel="cost"><span class="nav-dot" style="background:var(--cost)"></span>Cost Optimization</div>
+  </nav>
+  <div id="status-footer">
+    <span class="pulse-dot" id="api-dot"></span>
+    <span id="api-status-text">Checking API…</span>
+  </div>
+</div>
+
+<div id="main">
+  <header>
+    <div>
+      <div id="panel-title">Overview</div>
+      <div id="panel-sub">Portfolio-wide facility intelligence</div>
+    </div>
+    <button id="refresh-btn" onclick="refreshCurrent()">↻ Refresh</button>
+  </header>
+  <div id="content"></div>
+</div>
+
+<script>
+const API_BASE = "http://127.0.0.1:8000";
+let currentPanel = "overview";
+let charts = {}; // track Chart.js instances so we can destroy before re-render
+
+if (typeof Chart === 'undefined') {
+  document.getElementById('content').innerHTML =
+    '<div id="api-error" style="display:flex;"><h4>Chart.js failed to load</h4>' +
+    '<div><p>The charting library couldn\'t load from the CDN — check your internet connection, ' +
+    'or a firewall/network may be blocking cdnjs.cloudflare.com. The dashboard needs this to render charts.</p></div></div>';
+  throw new Error('Chart.js not loaded');
+}
+
+const PANEL_META = {
+  overview:    { title: "Overview", sub: "Portfolio-wide facility intelligence" },
+  energy:      { title: "Energy Agent", sub: "Real BDG2 electricity data \u00b7 anomaly detection & forecasting" },
+  maintenance: { title: "Maintenance Agent", sub: "Predictive failure risk & health scoring" },
+  occupancy:   { title: "Occupancy Agent", sub: "Space utilization analytics & forecasting" },
+  security:    { title: "Security Agent", sub: "Access control anomaly detection" },
+  cost:        { title: "Cost Optimization Agent", sub: "Cross-domain savings estimation" },
+};
+
+async function api(path) {
+  const res = await fetch(API_BASE + path);
+  if (!res.ok) throw new Error(path + " returned " + res.status);
+  return res.json();
+}
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => c && c.destroy());
+  charts = {};
+}
+
+function chartDefaults() {
+  Chart.defaults.color = '#A8B3C2';
+  Chart.defaults.borderColor = '#2A3441';
+  Chart.defaults.font.family = "'Inter', sans-serif";
+}
+chartDefaults();
+
+function showError(msg) {
+  document.getElementById('content').innerHTML =
+    '<div id="api-error" style="display:flex;">' +
+      '<h4>Can\'t reach the API</h4>' +
+      '<div><p>' + msg + '<br><br>Start the backend first, then hit Refresh:</p>' +
+      '<p><code>uvicorn src.api.main:app --reload --port 8000</code></p></div>' +
+    '</div>';
+}
+
+async function checkApiStatus() {
+  const dot = document.getElementById('api-dot');
+  const txt = document.getElementById('api-status-text');
+  try {
+    await api('/');
+    dot.className = 'pulse-dot live';
+    txt.textContent = 'API online';
+  } catch {
+    dot.className = 'pulse-dot down';
+    txt.textContent = 'API offline';
+  }
+}
+
+function switchPanel(panel) {
+  currentPanel = panel;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.panel === panel));
+  document.getElementById('panel-title').textContent = PANEL_META[panel].title;
+  document.getElementById('panel-sub').textContent = PANEL_META[panel].sub;
+  render();
+}
+
+function refreshCurrent() { checkApiStatus(); render(); }
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => switchPanel(item.dataset.panel));
+});
+
+async function render() {
+  destroyCharts();
+  const content = document.getElementById('content');
+  content.style.opacity = 0.3;
+  content.innerHTML = '<p style="color:var(--text-low);font-size:13px;">Loading…</p>';
+  try {
+    if (currentPanel === 'overview') await renderOverview();
+    else if (currentPanel === 'energy') await renderEnergy();
+    else if (currentPanel === 'maintenance') await renderMaintenance();
+    else if (currentPanel === 'occupancy') await renderOccupancy();
+    else if (currentPanel === 'security') await renderSecurity();
+    else if (currentPanel === 'cost') await renderCost();
+  } catch (e) {
+    console.error('Render error:', e);
+    showError(e.message);
+  } finally {
+    content.style.opacity = 1;
+  }
+}
+
+window.addEventListener('error', (e) => {
+  console.error('Uncaught error:', e.error);
+  showError(e.message || 'An unexpected error occurred — check the browser console (F12) for details.');
+});
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('Unhandled promise rejection:', e.reason);
+  showError((e.reason && e.reason.message) || 'A request failed — check the browser console (F12) for details.');
+});
+
+function statusBadge(status) {
+  const cls = String(status).toLowerCase();
+  return '<span class="badge ' + cls + '">' + status + '</span>';
+}
+
+/* ---------------- OVERVIEW ---------------- */
+async function renderOverview() {
+  const data = await api('/executive/summary');
+  const scores = data.facility_health_scores;
+  const fids = Object.keys(scores);
+
+  const content = document.getElementById('content');
+  content.innerHTML =
+    '<div class="hero">' +
+      '<div><div class="hero-score">' + data.portfolio_avg_health_score + '</div><div class="hero-label">Portfolio health score / 100</div></div>' +
+      '<div class="hero-meta">' +
+        '<div class="hero-meta-item"><div class="kpi-label">Estimated savings</div><div class="kpi-value" style="color:var(--cost)">$' + Math.round(data.cost_summary.total_estimated_savings_usd).toLocaleString() + '</div></div>' +
+        '<div class="hero-meta-item"><div class="kpi-label">Space opportunity</div><div class="kpi-value" style="color:var(--occupancy)">$' + Math.round(data.cost_summary.total_opportunity_usd).toLocaleString() + '</div></div>' +
+        '<div class="hero-meta-item"><div class="kpi-label">Facilities monitored</div><div class="kpi-value">' + fids.length + '</div></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="assumption-note">\u2139\ufe0f Dollar figures use illustrative assumed unit costs, not real financial data \u2014 see Cost Optimization panel for the exact rates and methodology.</div>' +
+    '<div class="grid-2">' +
+      '<div class="panel-box"><h3>Facility health by ID</h3><div class="chart-wrap"><canvas id="chart-overview-health"></canvas></div></div>' +
+      '<div class="panel-box"><h3>Prioritized recommendations</h3>' +
+        data.recommendations.slice(0, 6).map((r, i) => '<div class="rec-item"><span class="rec-num">' + String(i+1).padStart(2,'0') + '</span><span>' + r + '</span></div>').join('') +
+      '</div>' +
+    '</div>' +
+    '<div class="panel-box"><h3>Agent status</h3><table>' +
+      '<tr><th>Agent</th><th>Key metric</th><th>Value</th></tr>' +
+      '<tr><td class="hi">\u26a1 Energy</td><td>Facilities monitored</td><td>' + data.agent_summaries.energy.facilities_monitored + '</td></tr>' +
+      '<tr><td class="hi">\ud83d\udd27 Maintenance</td><td>Work orders generated</td><td>' + data.agent_summaries.maintenance.work_orders_generated + '</td></tr>' +
+      '<tr><td class="hi">\ud83d\udc65 Occupancy</td><td>Avg occupancy rate</td><td>' + data.agent_summaries.occupancy.avg_occupancy_rate_pct + '%</td></tr>' +
+      '<tr><td class="hi">\ud83d\udee1\ufe0f Security</td><td>Alerts generated</td><td>' + data.agent_summaries.security.alerts_generated + '</td></tr>' +
+    '</table></div>';
+
+  charts.overviewHealth = new Chart(document.getElementById('chart-overview-health'), {
+    type: 'bar',
+    data: {
+      labels: fids.map(f => 'Facility ' + f),
+      datasets: [{
+        label: 'Health score',
+        data: fids.map(f => scores[f].composite_health_score),
+        backgroundColor: fids.map(f => scores[f].composite_health_score >= 75 ? '#6FCF7A' : scores[f].composite_health_score >= 50 ? '#F2B84B' : '#FF6B6B'),
+        borderRadius: 5,
+        maxBarThickness: 46,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { min: 0, max: 100, grid: { color: '#1A222E' } }, x: { grid: { display: false } } },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+/* ---------------- ENERGY ---------------- */
+async function renderEnergy() {
+  const data = await api('/energy/summary');
+  const m = data.model_metrics, s = data.summary;
+  const facilityIds = Object.keys(data.forecast_next_24h);
+
+  const content = document.getElementById('content');
+  content.innerHTML =
+    '<div class="kpi-row">' +
+      '<div class="kpi-card" style="--accent:var(--energy)"><div class="kpi-label">Total electricity</div><div class="kpi-value">' + Math.round(s.total_electricity_kwh).toLocaleString() + ' kWh</div></div>' +
+      '<div class="kpi-card" style="--accent:var(--energy)"><div class="kpi-label">Facilities monitored</div><div class="kpi-value">' + s.facilities_monitored + '</div></div>' +
+      '<div class="kpi-card" style="--accent:var(--energy)"><div class="kpi-label">Anomalies detected</div><div class="kpi-value">' + s.predicted_anomalies_total + '</div></div>' +
+      '<div class="kpi-card" style="--accent:' + (m.meets_pdf_target_85pct ? 'var(--cost)' : 'var(--security)') + '"><div class="kpi-label">Detector accuracy</div><div class="kpi-value">' + (m.accuracy*100).toFixed(1) + '%</div><div class="kpi-delta ' + (m.meets_pdf_target_85pct ? 'good' : 'bad') + '">' + (m.meets_pdf_target_85pct ? '\u2713 Meets \u226585% target' : '\u2717 Below target') + '</div></div>' +
+    '</div>' +
+    '<div class="grid-2">' +
+      '<div class="panel-box"><h3>24-hour forecast <select id="energy-facility-select" onchange="renderEnergyForecast(this.value)">' + facilityIds.map(f => '<option value="' + f + '">Facility ' + f + '</option>').join('') + '</select></h3><div class="chart-wrap"><canvas id="chart-energy-forecast"></canvas></div></div>' +
+      '<div class="panel-box"><h3>Recent anomalies</h3><table><tr><th>Facility</th><th>Timestamp</th><th>Usage</th></tr>' +
+        data.recent_anomalies.slice(0,8).map(a => '<tr><td class="hi">' + a.facility_id + '</td><td class="mono">' + a.timestamp.slice(0,16) + '</td><td>' + a.electricity_usage.toFixed(1) + ' kWh</td></tr>').join('') +
+      '</table></div>' +
+    '</div>';
+  window._energyForecastData = data.forecast_next_24h;
+  renderEnergyForecast(facilityIds[0]);
+}
+
+function renderEnergyForecast(fid) {
+  if (charts.energyForecast) charts.energyForecast.destroy();
+  const forecast = window._energyForecastData[fid];
+  charts.energyForecast = new Chart(document.getElementById('chart-energy-forecast'), {
+    type: 'line',
+    data: {
+      labels: forecast.map(f => f.timestamp.slice(11,16)),
+      datasets: [{
+        label: 'Predicted kWh', data: forecast.map(f => f.predicted_kwh),
+        borderColor: '#F2B84B', backgroundColor: 'rgba(242,184,75,0.1)',
+        fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2,
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { y: { grid: { color: '#1A222E' } }, x: { grid: { display: false } } } }
+  });
+}
+
+/* ---------------- MAINTENANCE ---------------- */
+async function renderMaintenance() {
+  const data = await api('/maintenance/summary');
+  const m = data.model_metrics, s = data.summary;
+  const dist = data.health_distribution;
+
+  const content = document.getElementById('content');
+  content.innerHTML =
+    '<div class="kpi-row">' +
+      '<div class="kpi-card" style="--accent:var(--maintenance)"><div class="kpi-label">Assets monitored</div><div class="kpi-value">' + s.assets_monitored + '</div></div>' +
+      '<div class="kpi-card" style="--accent:var(--maintenance)"><div class="kpi-label">Work orders generated</div><div class="kpi-value">' + s.work_orders_generated + '</div></div>' +
+      '<div class="kpi-card" style="--accent:var(--maintenance)"><div class="kpi-label">Avg health score</div><div class="kpi-value">' + s.avg_health_score + '/100</div></div>' +
+      '<div class="kpi-card" style="--accent:var(--maintenance)"><div class="kpi-label">Classifier accuracy</div><div class="kpi-value">' + (m.accuracy*100).toFixed(1) + '%</div></div>' +
+    '</div>' +
+    '<div class="grid-2">' +
+      '<div class="panel-box"><h3>Condition distribution</h3><div class="chart-wrap"><canvas id="chart-maint-dist"></canvas></div></div>' +
+      '<div class="panel-box"><h3>Generated work orders</h3>' +
+        (data.work_orders.length ?
+          '<table><tr><th>Asset</th><th>Facility</th><th>Health</th><th>Risk</th></tr>' +
+          data.work_orders.map(w => '<tr><td class="hi">' + w.asset_name + '</td><td>' + w.facility_id + '</td><td>' + w.health_score + '</td><td>' + (w.failure_risk*100).toFixed(0) + '%</td></tr>').join('') +
+          '</table>'
+          : '<p style="color:var(--text-low);font-size:13px;">No assets currently at risk.</p>') +
+      '</div>' +
+    '</div>';
+  charts.maintDist = new Chart(document.getElementById('chart-maint-dist'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(dist),
+      datasets: [{ data: Object.values(dist), backgroundColor: ['#6FCF7A','#F2B84B','#FF6B6B'].slice(0, Object.keys(dist).length) }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+
+/* ---------------- OCCUPANCY ---------------- */
+async function renderOccupancy() {
+  const data = await api('/occupancy/summary');
+  const m = data.model_metrics, s = data.summary;
+  const zones = data.zone_distribution;
+
+  const content = document.getElementById('content');
+  content.innerHTML =
+    '<div class="kpi-row">' +
+      '<div class="kpi-card" style="--accent:var(--occupancy)"><div class="kpi-label">Facilities monitored</div><div class="kpi-value">' + s.facilities_monitored + '</div></div>' +
+      '<div class="kpi-card" style="--accent:var(--occupancy)"><div class="kpi-label">Zones monitored</div><div class="kpi-value">' + s.zones_monitored + '</div></div>' +
+      '<div class="kpi-card" style="--accent:var(--occupancy)"><div class="kpi-label">Avg occupancy rate</div><div class="kpi-value">' + s.avg_occupancy_rate_pct + '%</div></div>' +
+      '<div class="kpi-card" style="--accent:' + (m.meets_pdf_target_80pct ? 'var(--cost)' : 'var(--security)') + '"><div class="kpi-label">Forecast accuracy</div><div class="kpi-value">' + (m.forecast_accuracy*100).toFixed(1) + '%</div><div class="kpi-delta ' + (m.meets_pdf_target_80pct ? 'good' : 'bad') + '">' + (m.meets_pdf_target_80pct ? '\u2713 Meets \u226580% target' : '\u2717 Below target') + '</div></div>' +
+    '</div>' +
+    '<div class="grid-2">' +
+      '<div class="panel-box"><h3>Zone occupancy distribution</h3><div class="chart-wrap"><canvas id="chart-occ-zone"></canvas></div></div>' +
+      '<div class="panel-box"><h3>Occupancy by facility</h3><div class="chart-wrap"><canvas id="chart-occ-facility"></canvas></div></div>' +
+    '</div>';
+  charts.occZone = new Chart(document.getElementById('chart-occ-zone'), {
+    type: 'bar',
+    data: { labels: zones.map(z => z.zone), datasets: [{ data: zones.map(z => z.avg_occupancy_rate), backgroundColor: '#9B8CFF', borderRadius: 5 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { max: 100, grid: { color: '#1A222E' } }, x: { grid: { display: false } } } }
+  });
+  const fac = data.facility_occupancy_pct;
+  charts.occFacility = new Chart(document.getElementById('chart-occ-facility'), {
+    type: 'bar',
+    data: { labels: Object.keys(fac).map(f => 'Facility ' + f), datasets: [{ data: Object.values(fac), backgroundColor: '#7C6FE8', borderRadius: 5 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { max: 100, grid: { color: '#1A222E' } }, x: { grid: { display: false } } } }
+  });
+}
+
+/* ---------------- SECURITY ---------------- */
+async function renderSecurity() {
+  const data = await api('/security/summary');
+  const m = data.model_metrics, s = data.summary;
+  const sev = data.severity_breakdown;
+
+  const content = document.getElementById('content');
+  content.innerHTML =
+    '<div class="kpi-row">' +
+      '<div class="kpi-card" style="--accent:var(--security)"><div class="kpi-label">Total access events</div><div class="kpi-value">' + s.total_events.toLocaleString() + '</div></div>' +
+      '<div class="kpi-card" style="--accent:var(--security)"><div class="kpi-label">Alerts generated</div><div class="kpi-value">' + s.alerts_generated + '</div></div>' +
+      '<div class="kpi-card" style="--accent:var(--security)"><div class="kpi-label">Facilities monitored</div><div class="kpi-value">' + s.facilities_monitored + '</div></div>' +
+      '<div class="kpi-card" style="--accent:var(--security)"><div class="kpi-label">Detection accuracy</div><div class="kpi-value">' + (m.accuracy*100).toFixed(1) + '%</div></div>' +
+    '</div>' +
+    '<div class="grid-2">' +
+      '<div class="panel-box"><h3>Alert severity breakdown</h3><div class="chart-wrap"><canvas id="chart-sec-sev"></canvas></div></div>' +
+      '<div class="panel-box"><h3>Recent alerts</h3><table><tr><th>Facility</th><th>Zone</th><th>Type</th><th>Severity</th></tr>' +
+        data.recent_alerts.slice(0,8).map(a => '<tr><td class="hi">' + a.facility_id + '</td><td>' + a.zone + '</td><td>' + a.event_type.replace(/_/g,' ') + '</td><td>' + statusBadge(a.severity) + '</td></tr>').join('') +
+      '</table></div>' +
+    '</div>';
+  charts.secSev = new Chart(document.getElementById('chart-sec-sev'), {
+    type: 'doughnut',
+    data: { labels: Object.keys(sev), datasets: [{ data: Object.values(sev), backgroundColor: ['#FF6B6B','#F2874B','#F2B84B'].slice(0, Object.keys(sev).length) }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+
+/* ---------------- COST ---------------- */
+async function renderCost() {
+  const data = await api('/cost/summary');
+  const bd = data.breakdown, s = data.summary, assumptions = data.assumptions;
+
+  const content = document.getElementById('content');
+  content.innerHTML =
+    '<div class="assumption-note">\u2139\ufe0f All figures below use assumed illustrative unit costs (shown at the bottom of this panel) \u2014 not real financial data. The methodology connecting agent findings to cost impact is real.</div>' +
+    '<div class="kpi-row">' +
+      '<div class="kpi-card" style="--accent:var(--cost)"><div class="kpi-label">Total estimated savings</div><div class="kpi-value">$' + Math.round(s.total_estimated_savings_usd).toLocaleString() + '</div></div>' +
+      '<div class="kpi-card" style="--accent:var(--occupancy)"><div class="kpi-label">Space opportunity</div><div class="kpi-value">$' + Math.round(s.total_opportunity_usd).toLocaleString() + '</div></div>' +
+    '</div>' +
+    '<div class="grid-2">' +
+      '<div class="panel-box"><h3>Savings breakdown by domain</h3><div class="chart-wrap"><canvas id="chart-cost-breakdown"></canvas></div></div>' +
+      '<div class="panel-box"><h3>Recommendations</h3>' +
+        data.recommendations.map((r,i) => '<div class="rec-item"><span class="rec-num">' + String(i+1).padStart(2,'0') + '</span><span>' + r + '</span></div>').join('') +
+      '</div>' +
+    '</div>' +
+    '<div class="panel-box"><h3>Assumed unit costs (illustrative)</h3><table>' +
+      Object.entries(assumptions).map(([k,v]) => '<tr><td class="hi">' + k.replace(/_/g,' ') + '</td><td class="mono">' + v + '</td></tr>').join('') +
+    '</table></div>';
+  charts.costBreakdown = new Chart(document.getElementById('chart-cost-breakdown'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(bd).map(k => k.replace('_usd','').replace(/_/g,' ')),
+      datasets: [{ data: Object.values(bd), backgroundColor: ['#F2B84B','#4FD1C5','#9B8CFF','#FF6B6B'], borderRadius: 5 }]
+    },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#1A222E' } }, y: { grid: { display: false } } } }
+  });
+}
+
+/* ---------------- init ---------------- */
+checkApiStatus();
+render();
+setInterval(checkApiStatus, 15000);
+</script>
+</body>
+</html>

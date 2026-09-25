@@ -15,6 +15,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.agents.energy_agent import EnergyAgent
+from src.agents.maintenance_agent import MaintenanceAgent
+from src.agents.occupancy_agent import OccupancyAgent
+from src.agents.security_agent import SecurityAgent
+from src.agents.cost_agent import CostAgent
+from src.agents.facility_intelligence_engine import FacilityIntelligenceEngine
 
 app = FastAPI(title="Agentic FacilityOps AI Platform", version="0.1.0")
 
@@ -65,3 +70,76 @@ def energy_forecast(facility_id: int):
     if forecast is None:
         raise HTTPException(status_code=404, detail=f"No forecast for facility_id={facility_id}")
     return {"facility_id": facility_id, "forecast": forecast}
+
+
+@lru_cache(maxsize=1)
+def get_maintenance_agent() -> MaintenanceAgent:
+    agent = MaintenanceAgent()
+    agent.fit()
+    return agent
+
+
+@app.get("/maintenance/summary")
+def maintenance_summary():
+    try:
+        return get_maintenance_agent().run()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@lru_cache(maxsize=1)
+def get_occupancy_agent() -> OccupancyAgent:
+    agent = OccupancyAgent()
+    agent.fit()
+    return agent
+
+
+@app.get("/occupancy/summary")
+def occupancy_summary():
+    try:
+        return get_occupancy_agent().run()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@lru_cache(maxsize=1)
+def get_security_agent() -> SecurityAgent:
+    agent = SecurityAgent()
+    agent.fit()
+    return agent
+
+
+@app.get("/security/summary")
+def security_summary():
+    try:
+        return get_security_agent().run()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@lru_cache(maxsize=1)
+def get_cost_agent() -> CostAgent:
+    return CostAgent()
+
+
+@app.get("/cost/summary")
+def cost_summary():
+    try:
+        return get_cost_agent().run()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@lru_cache(maxsize=1)
+def get_facility_intelligence_engine() -> FacilityIntelligenceEngine:
+    return FacilityIntelligenceEngine()
+
+
+@app.get("/executive/summary")
+def executive_summary():
+    """Cross-agent orchestration output -- powers the Executive Dashboard."""
+    try:
+        engine = get_facility_intelligence_engine()
+        return engine.run()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
