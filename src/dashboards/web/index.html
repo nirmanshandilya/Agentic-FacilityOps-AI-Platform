@@ -271,6 +271,23 @@
     font-family: inherit;
     font-size: 13px;
   }
+
+  /* ---------- Milestone 4 mockup-matched elements ---------- */
+  .milestone-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .milestone-header h2 { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  .exec-badge { background: var(--overview-dim); color: var(--overview); font-size: 12px; padding: 5px 14px; border-radius: 20px; font-weight: 500; white-space: nowrap; }
+
+  .check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; }
+  .check-item { display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--text-mid); padding: 7px 0; }
+  .check-icon { color: var(--cost); font-size: 13px; flex-shrink: 0; }
+
+  .kpi-grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .dist-row { margin-bottom: 16px; }
+  .dist-row:last-child { margin-bottom: 0; }
+  .dist-row-top { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-mid); margin-bottom: 7px; }
+  .dist-bar-track { height: 6px; background: var(--bg-2); border-radius: 4px; overflow: hidden; }
+  .dist-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
 </style>
 </head>
 <body>
@@ -424,17 +441,47 @@ async function renderOverview() {
   const scores = data.facility_health_scores;
   const fids = Object.keys(scores);
 
+  const bd = data.cost_breakdown;
+  const distTotal = Object.values(bd).reduce((a,b) => a+b, 0) || 1;
+  const distItems = [
+    { label: 'Energy Savings', value: bd.energy_savings_usd, color: 'var(--energy)' },
+    { label: 'Maintenance Savings', value: bd.maintenance_savings_usd, color: 'var(--maintenance)' },
+    { label: 'Space Opportunity', value: bd.occupancy_opportunity_usd, color: 'var(--occupancy)' },
+    { label: 'Security Savings', value: bd.security_savings_usd, color: 'var(--security)' },
+  ];
+  const costReductionPct = Math.round((data.cost_summary.total_estimated_savings_usd /
+    (data.cost_summary.total_estimated_savings_usd + data.cost_summary.total_opportunity_usd || 1)) * 100);
+  const optimizationsCount = data.recommendations.length;
+
+  const featureChecklist = [
+    'Facility Health Score', 'Cost Saving Recommendations', 'Agent Performance Monitoring', 'Executive Facility Overview',
+    'Operational Cost Analysis', 'Resource Utilization Analytics', 'Sustainability Metrics',
+  ];
+
   const content = document.getElementById('content');
   content.innerHTML =
-    '<div class="hero">' +
-      '<div><div class="hero-score">' + data.portfolio_avg_health_score + '</div><div class="hero-label">Portfolio health score / 100</div></div>' +
-      '<div class="hero-meta">' +
-        '<div class="hero-meta-item"><div class="kpi-label">Estimated savings</div><div class="kpi-value" style="color:var(--cost)">$' + Math.round(data.cost_summary.total_estimated_savings_usd).toLocaleString() + '</div></div>' +
-        '<div class="hero-meta-item"><div class="kpi-label">Space opportunity</div><div class="kpi-value" style="color:var(--occupancy)">$' + Math.round(data.cost_summary.total_opportunity_usd).toLocaleString() + '</div></div>' +
-        '<div class="hero-meta-item"><div class="kpi-label">Facilities monitored</div><div class="kpi-value">' + fids.length + '</div></div>' +
+    '<div class="milestone-header"><h2>\ud83c\udfe2 Cost Optimization &amp; Facility Intelligence</h2><span class="exec-badge">\u25cf Executive View</span></div>' +
+    '<div class="grid-2">' +
+      '<div class="panel-box"><h3>Facility Intelligence Features</h3><div class="check-grid">' +
+        featureChecklist.map(f => '<div class="check-item"><span class="check-icon">\u2713</span>' + f + '</div>').join('') +
+      '</div></div>' +
+      '<div>' +
+        '<div class="panel-box" style="margin-bottom:18px;"><h3>Key Performance Indicators</h3><div class="kpi-grid-2x2">' +
+          '<div class="kpi-card" style="--accent:var(--cost)"><div class="kpi-label">Cost Reduction</div><div class="kpi-value">' + costReductionPct + '%</div></div>' +
+          '<div class="kpi-card" style="--accent:var(--overview)"><div class="kpi-label">ROI Generated</div><div class="kpi-value">$' + Math.round(data.cost_summary.total_estimated_savings_usd).toLocaleString() + '</div></div>' +
+          '<div class="kpi-card" style="--accent:var(--maintenance)"><div class="kpi-label">Facility Health</div><div class="kpi-value">' + data.portfolio_avg_health_score + '/100</div></div>' +
+          '<div class="kpi-card" style="--accent:var(--occupancy)"><div class="kpi-label">Optimizations</div><div class="kpi-value">' + optimizationsCount + '</div></div>' +
+        '</div></div>' +
+        '<div class="panel-box"><h3>Cost Distribution</h3>' +
+          distItems.map(d => {
+            const pct = Math.round((d.value / distTotal) * 100);
+            return '<div class="dist-row"><div class="dist-row-top"><span>' + d.label + '</span><span class="hi">' + pct + '%</span></div>' +
+              '<div class="dist-bar-track"><div class="dist-bar-fill" style="width:' + pct + '%;background:' + d.color + '"></div></div></div>';
+          }).join('') +
+        '</div>' +
       '</div>' +
     '</div>' +
-    '<div class="assumption-note">\u2139\ufe0f Dollar figures use illustrative assumed unit costs, not real financial data \u2014 see Cost Optimization panel for the exact rates and methodology.</div>' +
+    '<div class="assumption-note">\u2139\ufe0f KPI dollar figures use illustrative assumed unit costs, not real financial data \u2014 see Cost Optimization panel for exact rates and methodology.</div>' +
     '<div class="grid-2">' +
       '<div class="panel-box"><h3>Facility health by ID</h3><div class="chart-wrap"><canvas id="chart-overview-health"></canvas></div></div>' +
       '<div class="panel-box"><h3>Prioritized recommendations</h3>' +
